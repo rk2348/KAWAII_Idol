@@ -60,17 +60,30 @@ public class GameManager : MonoBehaviour
         DailyReport report = new DailyReport();
         report.day = currentDay;
 
-        switch (actionType)
+        // ★追加：状態異常（入院/失踪）チェック
+        idol.CheckConditionEvents(report); // まず今日の状態を確認（入院発生など）
+
+        bool canAct = idol.groupData.IsAvailable();
+
+        if (canAct)
         {
-            case "Lesson": idol.DoLesson(report); break;
-            case "Promo": idol.DoPromotion(report); break;
-            case "Rest": idol.DoRest(report); break;
-            case "BookVenue": idol.BookVenue(param, 3, report); break;
-            case "Hire": staff.HireStaff((StaffType)param, 1, report); break;
-            case "ChangeConcept": idol.ChangeConcept((IdolGenre)param, report); break;
-            // ★追加：新曲リリース (param=予算Tier)
-            case "ProduceSong": idol.ProduceSong(param, report); break;
-            case "Next": report.AddLog("何もしなかった。"); break;
+            // 正常時：アクション実行
+            switch (actionType)
+            {
+                case "Lesson": idol.DoLesson(report); break;
+                case "Promo": idol.DoPromotion(report); break;
+                case "Rest": idol.DoRest(report); break;
+                case "BookVenue": idol.BookVenue(param, 3, report); break;
+                case "Hire": staff.HireStaff((StaffType)param, 1, report); break;
+                case "ChangeConcept": idol.ChangeConcept((IdolGenre)param, report); break;
+                case "ProduceSong": idol.ProduceSong(param, report); break;
+                case "Next": report.AddLog("何もしなかった。"); break;
+            }
+        }
+        else
+        {
+            // 異常時：アクション強制キャンセル
+            report.AddLog("<color=grey>【行動不能】メンバー不在のため何もできません...</color>");
         }
 
         currentDay++;
@@ -84,7 +97,6 @@ public class GameManager : MonoBehaviour
             market.UpdateTrendRandomly(report);
         }
 
-        // ★追加：7日ごとに週間ランキング集計
         if (currentDay % 7 == 0)
         {
             idol.ProcessWeeklySales(report);
@@ -130,8 +142,6 @@ public class GameManager : MonoBehaviour
     public void OnClickChangeGenreToKawaii() { ExecuteAction("ChangeConcept", 0); }
     public void OnClickChangeGenreToCool() { ExecuteAction("ChangeConcept", 1); }
     public void OnClickChangeGenreToRock() { ExecuteAction("ChangeConcept", 2); }
-
-    // ★追加：楽曲リリースボタン用
-    public void OnClickProduceSongLow() { ExecuteAction("ProduceSong", 0); }  // 低予算
-    public void OnClickProduceSongHigh() { ExecuteAction("ProduceSong", 1); } // 高予算
+    public void OnClickProduceSongLow() { ExecuteAction("ProduceSong", 0); }
+    public void OnClickProduceSongHigh() { ExecuteAction("ProduceSong", 1); }
 }
