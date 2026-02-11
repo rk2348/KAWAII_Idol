@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Linq; // セットリストの安全装置チェックに必要
 
 public class GameManager : MonoBehaviour
 {
@@ -16,6 +17,9 @@ public class GameManager : MonoBehaviour
     public bool isGameOver = false;
     public bool isGameClear = false;
     public ProducerOrigin origin;
+
+    // ★追加：曲名入力待ちの一時保存変数
+    private string pendingSongTitle = "";
 
     void Start()
     {
@@ -53,6 +57,13 @@ public class GameManager : MonoBehaviour
         uiManager.ShowMainScreen();
     }
 
+    // ★追加：曲名入力パネルから呼ばれるメソッド
+    public void OnSongNameConfirmed(string title, int budgetTier)
+    {
+        pendingSongTitle = title;      // 入力された曲名を保存
+        ExecuteAction("ProduceSong", budgetTier); // アクション実行へ
+    }
+
     private void ExecuteAction(string actionType, int param = 0)
     {
         if (isGameOver || isGameClear) return;
@@ -60,14 +71,13 @@ public class GameManager : MonoBehaviour
         DailyReport report = new DailyReport();
         report.day = currentDay;
 
-        // ★追加：状態異常（入院/失踪）チェック
-        idol.CheckConditionEvents(report); // まず今日の状態を確認（入院発生など）
+        // 状態異常チェック（入院・失踪など）
+        idol.CheckConditionEvents(report);
 
         bool canAct = idol.groupData.IsAvailable();
 
         if (canAct)
         {
-            // 正常時：アクション実行
             switch (actionType)
             {
                 case "Lesson": idol.DoLesson(report); break;
@@ -76,15 +86,31 @@ public class GameManager : MonoBehaviour
                 case "BookVenue": idol.BookVenue(param, 3, report); break;
                 case "Hire": staff.HireStaff((StaffType)param, 1, report); break;
                 case "ChangeConcept": idol.ChangeConcept((IdolGenre)param, report); break;
-                case "ProduceSong": idol.ProduceSong(param, report); break;
+
+                // ★変更：曲名を渡して制作を実行
+                case "ProduceSong":
+                    idol.ProduceSong(param, report, pendingSongTitle);
+                    break;
+
                 case "Next": report.AddLog("何もしなかった。"); break;
             }
         }
         else
         {
-            // 異常時：アクション強制キャンセル
             report.AddLog("<color=grey>【行動不能】メンバー不在のため何もできません...</color>");
         }
+
+        // --- ★セットリスト安全装置 ---
+        // 今日のライブがある場合、セットリストが空なら自動生成する
+        var todayLive = idol.activeBookings.FirstOrDefault(b => b.eventDay == currentDay && !b.isCanceled);
+        if (todayLive != null)
+        {
+            if (todayLive.setlist.Count == 0)
+            {
+                idol.AutoGenerateSetlist(todayLive);
+            }
+        }
+        // ------------------------------
 
         currentDay++;
 
@@ -142,6 +168,23 @@ public class GameManager : MonoBehaviour
     public void OnClickChangeGenreToKawaii() { ExecuteAction("ChangeConcept", 0); }
     public void OnClickChangeGenreToCool() { ExecuteAction("ChangeConcept", 1); }
     public void OnClickChangeGenreToRock() { ExecuteAction("ChangeConcept", 2); }
-    public void OnClickProduceSongLow() { ExecuteAction("ProduceSong", 0); }
-    public void OnClickProduceSongHigh() { ExecuteAction("ProduceSong", 1); }
+
+    // ★変更：ボタンを押したら即実行せず、名前入力パネルを開く
+    public void OnClickProduceSongLow()
+    {
+        int nextNum = idol.groupData.discography.Count + 1;
+        uiManager.ShowSongProductionPanel(0, nextNum);
+    }
+
+    public void OnClickProduceSongHigh()
+    {
+        int nextNum = idol.groupData.discography.Count + 1;
+        uiManager.ShowSongProductionPanel(1, nextNum);
+    }
+
+    // ★追加：セットリスト編集画面を開く
+    public void OnClickSetlist()
+    {
+        uiManager.ShowSetlistScreen();
+    }
 }

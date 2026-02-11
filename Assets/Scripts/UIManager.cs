@@ -12,6 +12,12 @@ public class UIManager : MonoBehaviour
     public GameObject gameOverPanel;
     public GameObject gameClearPanel;
 
+    [Header("Setlist Panel")]
+    public SetlistPanel setlistPanel;
+
+    [Header("Song Name Input Panel")]
+    public SongNameInputPanel songNamePanel;
+
     [Header("Main Screen Text")]
     public Text dateText;
     public Text cashText;
@@ -35,6 +41,8 @@ public class UIManager : MonoBehaviour
     public void Initialize(GameManager gm)
     {
         gameManager = gm;
+
+        if (songNamePanel != null) songNamePanel.Setup(gm);
     }
 
     public void ShowStartScreen()
@@ -148,5 +156,18 @@ public class UIManager : MonoBehaviour
                 latestSongText.text = "最新曲: なし";
             }
         }
+    }
+
+    // ★追加：セットリスト画面を開く
+    public void ShowSetlistScreen()
+    {
+        // IdolManagerを渡して初期化
+        setlistPanel.Open(gameManager.idol);
+    }
+
+    // ★追加: 曲名入力画面を開く
+    public void ShowSongProductionPanel(int budgetTier, int nextSongNum)
+    {
+        songNamePanel.Open(budgetTier, nextSongNum);
     }
 }

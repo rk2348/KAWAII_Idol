@@ -17,18 +17,16 @@ public class IdolGroup
     public string groupName = "FRUITS ZIPPER";
     public int fans = 1000;
     public int performance = 10;
-    public int mental = 100; // 0で失踪
-    public int fatigue = 0;  // 100で入院
+    public int mental = 100;
+    public int fatigue = 0;
     public IdolGenre genre = IdolGenre.KAWAII;
     public bool hasDoneDome = false;
 
-    // ★追加：状態異常管理
-    public int hospitalDaysLeft = 0; // 入院残り日数
-    public int runawayDaysLeft = 0;  // 失踪残り日数
+    public int hospitalDaysLeft = 0;
+    public int runawayDaysLeft = 0;
 
     public List<Song> discography = new List<Song>();
 
-    // 行動可能か？
     public bool IsAvailable()
     {
         return hospitalDaysLeft <= 0 && runawayDaysLeft <= 0;
@@ -36,8 +34,6 @@ public class IdolGroup
 }
 
 public enum IdolGenre { KAWAII, COOL, ROCK, TRADITIONAL }
-
-// --- スタッフ・会場 ---
 
 public enum StaffType { Trainer, Marketer, Manager }
 
@@ -62,6 +58,7 @@ public class Venue
     public int capacity;
     public long baseCost;
     public int minFansReq;
+    public int maxSongs; // ★追加：この会場で披露できる曲数
 }
 
 [Serializable]
@@ -70,16 +67,12 @@ public class VenueBooking
     public Venue venue;
     public int eventDay;
     public bool isCanceled;
+
+    // ★追加：セットリスト（曲のリスト）
+    public List<Song> setlist = new List<Song>();
 }
 
-// --- ゲーム設定データ ---
-
-public enum ProducerOrigin
-{
-    OldAgency,
-    Venture,
-    Indie
-}
+public enum ProducerOrigin { OldAgency, Venture, Indie }
 
 [Serializable]
 public class DailyReport
