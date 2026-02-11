@@ -28,7 +28,7 @@ public class GameManager : MonoBehaviour
         uiManager.ShowStartScreen();
     }
 
-    // スタート画面で「出自」を選んだら呼ばれる
+    // スタート画面で「出自」を選んだら呼ばれる（引数1つなので設定可能）
     public void StartGame(int originIndex)
     {
         origin = (ProducerOrigin)originIndex;
@@ -60,14 +60,13 @@ public class GameManager : MonoBehaviour
         isGameClear = false;
 
         financial.Initialize(startCash, startDebt, interest);
-        market.UpdateTrendRandomly(new DailyReport()); // 初回のトレンドログは捨てる
+        market.UpdateTrendRandomly(new DailyReport());
 
-        // メイン画面へ
         uiManager.ShowMainScreen();
     }
 
-    // プレイヤーが行動ボタンを押した時の処理
-    public void ExecuteAction(string actionType, int param = 0)
+    // 内部処理用のメインロジック（privateに変更しても良いが、汎用的に残す）
+    private void ExecuteAction(string actionType, int param = 0)
     {
         if (isGameOver || isGameClear) return;
 
@@ -89,7 +88,7 @@ public class GameManager : MonoBehaviour
         // 2. 自動処理（金融・イベント・ライブ）
         currentDay++;
 
-        financial.ProcessDailyTransactions(currentDay, report); // 予約決済
+        financial.ProcessDailyTransactions(currentDay, report);
 
         if (currentDay % 30 == 0)
         {
@@ -113,18 +112,64 @@ public class GameManager : MonoBehaviour
 
     void CheckGameEnd()
     {
-        // 倒産判定
         if (financial.currentCash < 0)
         {
             isGameOver = true;
             Debug.Log("GAME OVER: 破産");
         }
 
-        // クリア判定（ドーム成功 かつ 借金完済 かつ 現金3億）
         if (idol.groupData.hasDoneDome && financial.currentDebt == 0 && financial.currentCash >= 300000000)
         {
             isGameClear = true;
             Debug.Log("GAME CLEAR: 伝説達成");
         }
+    }
+
+    // ==================================================
+    // ★追加：Unityのボタンから呼ぶための専用関数群★
+    // ==================================================
+
+    public void OnClickLesson()
+    {
+        ExecuteAction("Lesson");
+    }
+
+    public void OnClickPromo()
+    {
+        ExecuteAction("Promo");
+    }
+
+    public void OnClickRest()
+    {
+        ExecuteAction("Rest");
+    }
+
+    public void OnClickNext()
+    {
+        ExecuteAction("Next");
+    }
+
+    // Zepp予約専用ボタン (Index 1 を渡す)
+    public void OnClickBookZepp()
+    {
+        ExecuteAction("BookVenue", 1);
+    }
+
+    // ドーム予約専用ボタン (Index 3 を渡す)
+    public void OnClickBookDome()
+    {
+        ExecuteAction("BookVenue", 3);
+    }
+
+    // トレーナー雇用専用ボタン (Index 0 = Trainer)
+    public void OnClickHireTrainer()
+    {
+        ExecuteAction("Hire", 0);
+    }
+
+    // マーケター雇用専用ボタン (Index 1 = Marketer)
+    public void OnClickHireMarketer()
+    {
+        ExecuteAction("Hire", 1);
     }
 }
