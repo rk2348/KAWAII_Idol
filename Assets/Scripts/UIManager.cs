@@ -11,14 +11,19 @@ public class UIManager : MonoBehaviour
     public GameObject gameOverPanel;
     public GameObject gameClearPanel;
 
-    [Header("Main Screen Objects")]
+    [Header("Main Screen Text")]
     public Text dateText;
     public Text cashText;
-    public Text debtText; // 借金表示用
-    public Text statusText;
+    public Text debtText;
+    public Text statusText; // ファン数などの数値
     public Text ledgerText;
     public Text trendText;
     public Text bookingText;
+
+    [Header("Main Screen Sliders (Visuals)")]
+    public Slider mentalSlider;      // メンタル (0-100)
+    public Slider fatigueSlider;     // 疲労度 (0-100)
+    public Slider performanceSlider; // 実力 (目安 0-100)
 
     [Header("Result Screen Objects")]
     public Text resultLogText;
@@ -54,7 +59,6 @@ public class UIManager : MonoBehaviour
         mainPanel.SetActive(false);
         resultPanel.SetActive(true);
 
-        // ログの生成
         StringBuilder sb = new StringBuilder();
         sb.AppendLine($"【Day {report.day} の結果】");
         sb.AppendLine($"収支変動: {report.cashChange:N0}円");
@@ -64,16 +68,12 @@ public class UIManager : MonoBehaviour
             sb.AppendLine(log);
         }
 
-        // ゲームオーバー/クリアなら追記
         if (gameManager.isGameOver) sb.AppendLine("\n<color=red>資金ショート！！ ゲームオーバー...</color>");
         if (gameManager.isGameClear) sb.AppendLine("\n<color=magenta>おめでとう！ 伝説のプロデューサー！</color>");
 
         resultLogText.text = sb.ToString();
-
-        // 終了フラグが立っていたら、閉じるボタンで専用画面へ
     }
 
-    // 結果画面の「閉じる（次の日へ）」ボタンから呼ぶ
     public void CloseResultScreen()
     {
         if (gameManager.isGameOver)
@@ -106,10 +106,29 @@ public class UIManager : MonoBehaviour
         debtText.text = $"Debt: ?{gameManager.financial.currentDebt:N0}";
 
         var g = gameManager.idol.groupData;
-        statusText.text = $"Fans: {g.fans:N0}\nPerf: {g.performance}\nMental: {g.mental}\nFatigue: {g.fatigue}";
-
         var m = gameManager.market;
+
+        // テキスト更新
+        statusText.text = $"Fans: {g.fans:N0}\nGenre: {g.genre}"; // 詳細はスライダーで見るので簡略化
         trendText.text = $"Trend: {m.currentTrend} {(m.isIceAge ? "<color=cyan>(ICE AGE)</color>" : "")}";
+
+        // --- スライダー更新 (New!) ---
+        if (mentalSlider != null)
+        {
+            mentalSlider.value = g.mental / 100f;
+            // メンタルが低いとバーの色を変える等の処理をしても良い
+        }
+
+        if (fatigueSlider != null)
+        {
+            fatigueSlider.value = g.fatigue / 100f;
+        }
+
+        if (performanceSlider != null)
+        {
+            // 実力は上限がないが、とりあえず100を基準にバーを表示
+            performanceSlider.value = g.performance / 100f;
+        }
 
         // 帳簿リスト
         string ledgerStr = "【入出金予定】\n";

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement; // シーン管理用
 
 public class GameManager : MonoBehaviour
 {
@@ -24,11 +25,9 @@ public class GameManager : MonoBehaviour
         events.Initialize(idol, financial);
         uiManager.Initialize(this);
 
-        // スタート画面を表示
         uiManager.ShowStartScreen();
     }
 
-    // スタート画面で「出自」を選んだら呼ばれる（引数1つなので設定可能）
     public void StartGame(int originIndex)
     {
         origin = (ProducerOrigin)originIndex;
@@ -39,17 +38,17 @@ public class GameManager : MonoBehaviour
         switch (origin)
         {
             case ProducerOrigin.OldAgency:
-                startCash = 100000000; // 1億
-                startDebt = 100000000; // 借金1億
-                interest = 0.02f;      // 月利2%
+                startCash = 100000000;
+                startDebt = 100000000;
+                interest = 0.02f;
                 break;
             case ProducerOrigin.Venture:
-                startCash = 50000000;  // 5000万
+                startCash = 50000000;
                 startDebt = 0;
                 interest = 0;
                 break;
             case ProducerOrigin.Indie:
-                startCash = 5000000;   // 500万
+                startCash = 5000000;
                 startDebt = 0;
                 interest = 0;
                 break;
@@ -65,27 +64,25 @@ public class GameManager : MonoBehaviour
         uiManager.ShowMainScreen();
     }
 
-    // 内部処理用のメインロジック（privateに変更しても良いが、汎用的に残す）
+    // --- メイン処理 ---
     private void ExecuteAction(string actionType, int param = 0)
     {
         if (isGameOver || isGameClear) return;
 
-        // 今日のレポート作成開始
         DailyReport report = new DailyReport();
         report.day = currentDay;
 
-        // 1. プレイヤーの行動実行
         switch (actionType)
         {
             case "Lesson": idol.DoLesson(report); break;
             case "Promo": idol.DoPromotion(report); break;
             case "Rest": idol.DoRest(report); break;
-            case "BookVenue": idol.BookVenue(param, 3, report); break; // 3ヶ月後予約
+            case "BookVenue": idol.BookVenue(param, 3, report); break;
             case "Hire": staff.HireStaff((StaffType)param, 1, report); break;
+            case "ChangeConcept": idol.ChangeConcept((IdolGenre)param, report); break; // 追加
             case "Next": report.AddLog("何もしなかった。"); break;
         }
 
-        // 2. 自動処理（金融・イベント・ライブ）
         currentDay++;
 
         financial.ProcessDailyTransactions(currentDay, report);
@@ -103,10 +100,7 @@ public class GameManager : MonoBehaviour
 
         report.cashChange = financial.dailyCashChange;
 
-        // 3. 勝敗判定
         CheckGameEnd();
-
-        // 4. 結果画面表示
         uiManager.ShowResultScreen(report);
     }
 
@@ -125,51 +119,30 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // ==================================================
-    // ★追加：Unityのボタンから呼ぶための専用関数群★
-    // ==================================================
-
-    public void OnClickLesson()
+    // --- リトライ機能 ---
+    public void RetryGame()
     {
-        ExecuteAction("Lesson");
+        // 現在のシーンを再読み込み
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    public void OnClickPromo()
-    {
-        ExecuteAction("Promo");
-    }
+    // --- Unity UI Button用ラッパー関数群 ---
 
-    public void OnClickRest()
-    {
-        ExecuteAction("Rest");
-    }
+    public void OnClickLesson() { ExecuteAction("Lesson"); }
+    public void OnClickPromo() { ExecuteAction("Promo"); }
+    public void OnClickRest() { ExecuteAction("Rest"); }
+    public void OnClickNext() { ExecuteAction("Next"); }
 
-    public void OnClickNext()
-    {
-        ExecuteAction("Next");
-    }
+    // 予約系
+    public void OnClickBookZepp() { ExecuteAction("BookVenue", 1); }
+    public void OnClickBookDome() { ExecuteAction("BookVenue", 3); }
 
-    // Zepp予約専用ボタン (Index 1 を渡す)
-    public void OnClickBookZepp()
-    {
-        ExecuteAction("BookVenue", 1);
-    }
+    // 雇用系
+    public void OnClickHireTrainer() { ExecuteAction("Hire", 0); }
+    public void OnClickHireMarketer() { ExecuteAction("Hire", 1); }
 
-    // ドーム予約専用ボタン (Index 3 を渡す)
-    public void OnClickBookDome()
-    {
-        ExecuteAction("BookVenue", 3);
-    }
-
-    // トレーナー雇用専用ボタン (Index 0 = Trainer)
-    public void OnClickHireTrainer()
-    {
-        ExecuteAction("Hire", 0);
-    }
-
-    // マーケター雇用専用ボタン (Index 1 = Marketer)
-    public void OnClickHireMarketer()
-    {
-        ExecuteAction("Hire", 1);
-    }
+    // コンセプト変更系 (0=KAWAII, 1=COOL, 2=ROCK, 3=TRADITIONAL)
+    public void OnClickChangeGenreToKawaii() { ExecuteAction("ChangeConcept", 0); }
+    public void OnClickChangeGenreToCool() { ExecuteAction("ChangeConcept", 1); }
+    public void OnClickChangeGenreToRock() { ExecuteAction("ChangeConcept", 2); }
 }

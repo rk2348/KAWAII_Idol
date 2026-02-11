@@ -18,9 +18,13 @@ public class IdolManager : MonoBehaviour
         market = mm;
         staffManager = sm;
         gameManager = gm;
-        groupData = new IdolGroup(); // リセット
+
+        // データリセット
+        groupData = new IdolGroup();
         activeBookings.Clear();
     }
+
+    // --- 既存のアクション ---
 
     public void DoLesson(DailyReport report)
     {
@@ -63,6 +67,44 @@ public class IdolManager : MonoBehaviour
 
         report.AddLog($"[休暇] 完全リフレッシュ (メンタル回復) / ケア費 -{cost:N0}円");
     }
+
+    // --- 新規追加：コンセプト変更（ピボット） ---
+
+    public void ChangeConcept(IdolGenre newGenre, DailyReport report)
+    {
+        // 変更コスト：高額（衣装や楽曲の作り直し）
+        int cost = 3000000; // 300万円
+
+        if (financial.currentCash < cost)
+        {
+            report.AddLog("<color=red>[変更不可]</color> 資金が足りません (300万円必要)");
+            return;
+        }
+
+        if (groupData.genre == newGenre)
+        {
+            report.AddLog("既にそのジャンルです。");
+            return;
+        }
+
+        financial.currentCash -= cost;
+        financial.dailyCashChange -= cost;
+
+        // ペナルティ：古参ファンが離れる
+        int lostFans = (int)(groupData.fans * 0.2f); // 20%減少
+        groupData.fans -= lostFans;
+
+        // ペナルティ：実力が少し落ちる（慣れないジャンルのため）
+        groupData.performance = (int)(groupData.performance * 0.9f);
+
+        IdolGenre oldGenre = groupData.genre;
+        groupData.genre = newGenre;
+
+        report.AddLog($"<color=yellow>[路線変更]</color> {oldGenre} -> {newGenre} へ転向しました。");
+        report.AddLog($"[影響] 衣装制作費 -{cost:N0}円 / ファン減少 -{lostFans}人");
+    }
+
+    // --- 予約・ライブシステム（既存） ---
 
     public List<Venue> GetVenueList()
     {
