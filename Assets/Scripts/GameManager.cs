@@ -6,93 +6,125 @@ public class GameManager : MonoBehaviour
     public FinancialManager financial;
     public MarketManager market;
     public IdolManager idol;
-    public StaffManager staff;  // 追加
-    public EventManager events; // 追加
+    public StaffManager staff;
+    public EventManager events;
     public UIManager uiManager;
 
     [Header("Game Status")]
     public int currentDay = 1;
     public bool isGameOver = false;
+    public bool isGameClear = false;
+    public ProducerOrigin origin;
 
     void Start()
     {
-        // 依存関係注入
+        // 初期化順序
         idol.Initialize(financial, market, staff, this);
         staff.Initialize(financial);
         events.Initialize(idol, financial);
         uiManager.Initialize(this);
 
-        // 初期設定
-        InitGame(50000000); // 5000万スタート
-        market.UpdateTrendRandomly();
-        UpdateUI();
+        // スタート画面を表示
+        uiManager.ShowStartScreen();
     }
 
-    void InitGame(long startCash)
+    // スタート画面で「出自」を選んだら呼ばれる
+    public void StartGame(int originIndex)
     {
-        financial.currentCash = startCash;
-    }
+        origin = (ProducerOrigin)originIndex;
+        long startCash = 0;
+        long startDebt = 0;
+        float interest = 0;
 
-    public void NextDay()
-    {
-        if (isGameOver) return;
-
-        currentDay++;
-
-        // 1. 金融処理
-        financial.ProcessDailyTransactions(currentDay);
-
-        // 2. 給料支払い（30日ごと）
-        if (currentDay % 30 == 0)
+        switch (origin)
         {
-            staff.PayMonthlySalaries();
-            // 利子払い等の固定費もここで
+            case ProducerOrigin.OldAgency:
+                startCash = 100000000; // 1億
+                startDebt = 100000000; // 借金1億
+                interest = 0.02f;      // 月利2%
+                break;
+            case ProducerOrigin.Venture:
+                startCash = 50000000;  // 5000万
+                startDebt = 0;
+                interest = 0;
+                break;
+            case ProducerOrigin.Indie:
+                startCash = 5000000;   // 500万
+                startDebt = 0;
+                interest = 0;
+                break;
         }
 
-        // 3. イベント発生チェック
-        events.CheckDailyEvent();
+        currentDay = 1;
+        isGameOver = false;
+        isGameClear = false;
 
-        // 4. アイドル日次更新
+        financial.Initialize(startCash, startDebt, interest);
+        market.UpdateTrendRandomly(new DailyReport()); // 初回のトレンドログは捨てる
+
+        // メイン画面へ
+        uiManager.ShowMainScreen();
+    }
+
+    // プレイヤーが行動ボタンを押した時の処理
+    public void ExecuteAction(string actionType, int param = 0)
+    {
+        if (isGameOver || isGameClear) return;
+
+        // 今日のレポート作成開始
+        DailyReport report = new DailyReport();
+        report.day = currentDay;
+
+        // 1. プレイヤーの行動実行
+        switch (actionType)
+        {
+            case "Lesson": idol.DoLesson(report); break;
+            case "Promo": idol.DoPromotion(report); break;
+            case "Rest": idol.DoRest(report); break;
+            case "BookVenue": idol.BookVenue(param, 3, report); break; // 3ヶ月後予約
+            case "Hire": staff.HireStaff((StaffType)param, 1, report); break;
+            case "Next": report.AddLog("何もしなかった。"); break;
+        }
+
+        // 2. 自動処理（金融・イベント・ライブ）
+        currentDay++;
+
+        financial.ProcessDailyTransactions(currentDay, report); // 予約決済
+
+        if (currentDay % 30 == 0)
+        {
+            staff.PayMonthlySalaries(report);
+            financial.PayMonthlyInterest(report);
+            market.UpdateTrendRandomly(report);
+        }
+
+        events.CheckDailyEvent(report);
+        idol.CheckAndHoldLive(currentDay, report);
         idol.DailyUpdate();
 
-        // 5. ライブ当日チェック（予約システム）
-        idol.CheckAndHoldLive(currentDay);
+        report.cashChange = financial.dailyCashChange;
 
-        // 6. 市場変動
-        if (currentDay % 30 == 0) market.UpdateTrendRandomly();
+        // 3. 勝敗判定
+        CheckGameEnd();
 
-        // 7. ゲームオーバー判定
+        // 4. 結果画面表示
+        uiManager.ShowResultScreen(report);
+    }
+
+    void CheckGameEnd()
+    {
+        // 倒産判定
         if (financial.currentCash < 0)
         {
             isGameOver = true;
-            Debug.Log("【GAME OVER】破産しました...");
+            Debug.Log("GAME OVER: 破産");
         }
 
-        UpdateUI();
-    }
-
-    // ボタンアクション用
-    public void OnClickLesson() { idol.DoLesson(); NextDay(); }
-    public void OnClickPromo() { idol.DoPromotion(); NextDay(); }
-    public void OnClickRest() { idol.DoRest(); NextDay(); }
-
-    // 予約ボタン（UIから呼ぶ用：index 0=ライブハウス, 1=Zepp...）
-    public void OnClickBookVenue(int index)
-    {
-        // 3ヶ月後（90日後）に予約を入れる仕様とする
-        idol.BookVenue(index, 3);
-        UpdateUI(); // 即金（手付金）が減るので更新
-    }
-
-    // スタッフ雇用ボタン（UIから呼ぶ用）
-    public void OnClickHireTrainer()
-    {
-        staff.HireStaff(StaffType.Trainer, 1);
-        UpdateUI();
-    }
-
-    public void UpdateUI()
-    {
-        uiManager.RefreshUI();
+        // クリア判定（ドーム成功 かつ 借金完済 かつ 現金3億）
+        if (idol.groupData.hasDoneDome && financial.currentDebt == 0 && financial.currentCash >= 300000000)
+        {
+            isGameClear = true;
+            Debug.Log("GAME CLEAR: 伝説達成");
+        }
     }
 }

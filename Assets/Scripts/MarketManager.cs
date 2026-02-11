@@ -2,47 +2,39 @@ using UnityEngine;
 
 public class MarketManager : MonoBehaviour
 {
-    [Header("現在の市場トレンド")]
     public IdolGenre currentTrend = IdolGenre.KAWAII;
-    public bool isIceAge = false; // アイドル氷河期フラグ
+    public bool isIceAge = false;
 
-    // トレンド更新（30日ごとに呼ぶなど）
-    public void UpdateTrendRandomly()
+    public void UpdateTrendRandomly(DailyReport report)
     {
-        // ランダムにトレンドを変更
+        // 30日ごとのトレンド変化
+        IdolGenre prevTrend = currentTrend;
         currentTrend = (IdolGenre)Random.Range(0, System.Enum.GetValues(typeof(IdolGenre)).Length);
 
-        // 低確率で氷河期到来（5%）
+        if (prevTrend != currentTrend)
+        {
+            report.AddLog($"【市場】トレンドが {prevTrend} から {currentTrend} に変化！");
+        }
+
+        // 氷河期判定 (5%)
         if (Random.Range(0, 100) < 5)
         {
             isIceAge = true;
-            Debug.Log("<color=blue>【ニュース】アイドルブーム終了！？ 市場が冷え込んでいます（氷河期突入）</color>");
+            report.AddLog("<color=blue>【ニュース】アイドル氷河期到来！市場が冷え込んでいます...</color>");
         }
-        else
+        else if (isIceAge)
         {
-            isIceAge = false; // 回復
-            Debug.Log($"【トレンド変化】現在の流行は {currentTrend} です！");
+            isIceAge = false;
+            report.AddLog("【ニュース】市場の景気が回復しました！");
         }
     }
 
-    // 集客倍率を計算する
     public float GetMarketMultiplier(IdolGenre groupGenre)
     {
         float multiplier = 1.0f;
-
-        // 氷河期なら半減
         if (isIceAge) multiplier *= 0.5f;
-
-        // トレンド一致ならボーナス、不一致ならペナルティ
-        if (groupGenre == currentTrend)
-        {
-            multiplier *= 1.5f; // ブームに乗っている
-        }
-        else
-        {
-            multiplier *= 0.8f; // 時代遅れ
-        }
-
+        if (groupGenre == currentTrend) multiplier *= 1.5f;
+        else multiplier *= 0.8f;
         return multiplier;
     }
 }

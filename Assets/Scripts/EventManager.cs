@@ -11,48 +11,39 @@ public class EventManager : MonoBehaviour
         financial = fm;
     }
 
-    // 毎日呼び出してイベント判定
-    public void CheckDailyEvent()
+    public void CheckDailyEvent(DailyReport report)
     {
         int dice = Random.Range(0, 100);
 
-        // 3%の確率でトラブル発生
-        if (dice < 3)
-        {
-            TriggerBadEvent();
-        }
-        // 1%の確率でラッキーイベント
-        else if (dice >= 99)
-        {
-            TriggerGoodEvent();
-        }
+        if (dice < 3) TriggerBadEvent(report);
+        else if (dice >= 98) TriggerGoodEvent(report); // 2%
     }
 
-    void TriggerBadEvent()
+    void TriggerBadEvent(DailyReport report)
     {
-        // 簡易的なランダム分岐
         int type = Random.Range(0, 3);
         switch (type)
         {
-            case 0: // 炎上
-                Debug.LogWarning("【炎上発生】SNSでの不用意な発言が炎上！ファン減少...");
+            case 0:
+                report.AddLog("<color=red>【炎上】</color> SNSで失言！ファン減少...");
                 idolManager.groupData.fans = (int)(idolManager.groupData.fans * 0.9f);
                 idolManager.groupData.mental -= 20;
                 break;
-            case 1: // 衣装破損
-                Debug.LogWarning("【トラブル】衣装のサイズが合わず作り直し！修繕費発生。");
+            case 1:
+                report.AddLog("<color=red>【破損】</color> 衣装トラブルで緊急出費！");
                 financial.currentCash -= 300000;
+                financial.dailyCashChange -= 300000;
                 break;
-            case 2: // メンバー喧嘩
-                Debug.LogWarning("【内紛】メンバー間で喧嘩勃発。メンタル激減。");
+            case 2:
+                report.AddLog("<color=red>【内紛】</color> メンバー喧嘩発生。メンタル低下。");
                 idolManager.groupData.mental -= 30;
                 break;
         }
     }
 
-    void TriggerGoodEvent()
+    void TriggerGoodEvent(DailyReport report)
     {
-        Debug.Log("<color=yellow>【バズり】TikTok動画が大バズり！ファン急増！</color>");
+        report.AddLog("<color=yellow>【バズり】</color> 動画が大ヒット！ファン急増！");
         idolManager.groupData.fans = (int)(idolManager.groupData.fans * 1.3f);
         idolManager.groupData.mental += 10;
     }

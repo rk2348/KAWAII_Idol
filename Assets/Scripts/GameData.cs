@@ -1,17 +1,17 @@
 using System;
 using System.Collections.Generic;
 
-// 取引データ（未来の支払い・入金予約）
+// --- 基本データ ---
+
 [Serializable]
 public class Transaction
 {
-    public string description; // 取引内容
-    public long amount;        // 金額（プラスは入金、マイナスは出金）
-    public int dueDay;         // 決済日
-    public bool isProcessed;   // 処理済みフラグ
+    public string description;
+    public long amount;
+    public int dueDay;
+    public bool isProcessed;
 }
 
-// アイドルグループのステータス
 [Serializable]
 public class IdolGroup
 {
@@ -21,23 +21,13 @@ public class IdolGroup
     public int mental = 100;
     public int fatigue = 0;
     public IdolGenre genre = IdolGenre.KAWAII;
-
-    // ★ここが抜けていました
     public bool hasDoneDome = false;
 }
 
-// アイドルのジャンル定義
-public enum IdolGenre
-{
-    KAWAII,
-    COOL,
-    ROCK,
-    TRADITIONAL
-}
+public enum IdolGenre { KAWAII, COOL, ROCK, TRADITIONAL }
 
-// --- 以下、Phase 2で追加したクラス群 ---
+// --- スタッフ・会場 ---
 
-// スタッフ職種
 public enum StaffType { Trainer, Marketer, Manager }
 
 [Serializable]
@@ -45,31 +35,52 @@ public class Staff
 {
     public string name;
     public StaffType type;
-    public int level;       // 1~5
-    public long monthlySalary; // 月給
+    public int level;
+    public long monthlySalary;
 
-    // 効果値（レベル×係数）
     public float GetEffectMultiplier()
     {
-        return 1.0f + (level * 0.1f); // 例: Lv5なら1.5倍の効果
+        return 1.0f + (level * 0.1f);
     }
 }
 
-// 会場データ（マスターデータ）
 [Serializable]
 public class Venue
 {
     public string venueName;
-    public int capacity;     // キャパ
-    public long baseCost;    // 基本使用料
-    public int minFansReq;   // 予約に必要な最低ファン数（足切り）
+    public int capacity;
+    public long baseCost;
+    public int minFansReq;
 }
 
-// 予約データ
 [Serializable]
 public class VenueBooking
 {
     public Venue venue;
-    public int eventDay;     // 開催日
-    public bool isCanceled;  // キャンセル済みか
+    public int eventDay;
+    public bool isCanceled;
+}
+
+// --- 新規追加：ゲーム設定データ ---
+
+// プロデューサーの出自（難易度）
+public enum ProducerOrigin
+{
+    OldAgency,  // 老舗：借金1億、コネあり、利子あり
+    Venture,    // ベンチャー：資金5000万、短期ノルマあり
+    Indie       // 叩き上げ：資金500万、借金なし、ハードモード
+}
+
+// 1日の活動レポート（ログ用）
+[Serializable]
+public class DailyReport
+{
+    public int day;
+    public List<string> logs = new List<string>();
+    public long cashChange;
+
+    public void AddLog(string text)
+    {
+        logs.Add(text);
+    }
 }

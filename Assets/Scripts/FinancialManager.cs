@@ -1,16 +1,28 @@
 using System.Collections.Generic;
 using UnityEngine;
-using System.Linq; // リスト操作用
+using System.Linq;
 
 public class FinancialManager : MonoBehaviour
 {
     [Header("資産状況")]
-    public long currentCash = 0; // 現在の現金（桁溢れ防止でlong）
+    public long currentCash = 0;
+    public long currentDebt = 0; // 借金総額
+    public float interestRate = 0.0f; // 月利（例: 0.02 = 2%）
 
-    [Header("帳簿（未来の入出金リスト）")]
+    [Header("帳簿")]
     public List<Transaction> pendingTransactions = new List<Transaction>();
 
-    // 取引を予約する（例：delayDays=60なら、60日後にキャッシュが動く）
+    // 1日の収支変動記録用
+    public long dailyCashChange = 0;
+
+    public void Initialize(long startCash, long startDebt, float rate)
+    {
+        currentCash = startCash;
+        currentDebt = startDebt;
+        interestRate = rate;
+        pendingTransactions.Clear();
+    }
+
     public void RegisterTransaction(string desc, long amount, int currentDay, int delayDays)
     {
         Transaction t = new Transaction();
@@ -18,45 +30,42 @@ public class FinancialManager : MonoBehaviour
         t.amount = amount;
         t.dueDay = currentDay + delayDays;
         t.isProcessed = false;
-
         pendingTransactions.Add(t);
 
-        // ログ出力（コンソールで確認用）
-        string type = amount >= 0 ? "入金予定" : "支払予定";
-        Debug.Log($"【帳簿記入】{desc}: {amount.ToString("#,0")}円 ({delayDays}日後)");
+        Debug.Log($"【帳簿】{desc}: {amount:N0}円 ({delayDays}日後)");
     }
 
-    // 毎日の処理：今日が期日の取引を決済する
-    public void ProcessDailyTransactions(int today)
+    // 毎日の決済処理
+    public void ProcessDailyTransactions(int today, DailyReport report)
     {
-        // 今日以前が期日で、まだ処理していないものを抽出
+        dailyCashChange = 0;
+
         List<Transaction> dueTransactions = pendingTransactions
             .Where(t => !t.isProcessed && t.dueDay <= today)
             .ToList();
 
         foreach (var t in dueTransactions)
         {
-            currentCash += t.amount; // 実際に現金を増減
+            currentCash += t.amount;
+            dailyCashChange += t.amount;
             t.isProcessed = true;
-            Debug.Log($"<color=yellow>【決済実行】{t.description}: {t.amount.ToString("#,0")}円 / 残高: {currentCash.ToString("#,0")}円</color>");
+
+            string type = t.amount >= 0 ? "入金" : "支払い";
+            report.AddLog($"[{type}] {t.description}: {t.amount:N0}円");
         }
 
-        // 処理済みをリストから削除（メモリ節約）
         pendingTransactions.RemoveAll(t => t.isProcessed);
-
-        // 黒字倒産チェック
-        if (currentCash < 0)
-        {
-            Debug.LogError("【GAMEOVER】資金ショート！倒産しました。");
-            // ここにゲームオーバー処理を入れる
-        }
     }
 
-    // 借金の利子支払い（毎月呼ばれる想定）
-    public void PayInterest(long debtAmount, float interestRate)
+    // 月末の利子支払い
+    public void PayMonthlyInterest(DailyReport report)
     {
-        long interest = (long)(debtAmount * interestRate);
-        currentCash -= interest;
-        Debug.Log($"<color=red>【利子支払】借金の利子 {interest}円 を支払いました。</color>");
+        if (currentDebt > 0 && interestRate > 0)
+        {
+            long interest = (long)(currentDebt * interestRate);
+            currentCash -= interest;
+            dailyCashChange -= interest;
+            report.AddLog($"<color=red>[利子] 借金返済利子: -{interest:N0}円</color>");
+        }
     }
 }
