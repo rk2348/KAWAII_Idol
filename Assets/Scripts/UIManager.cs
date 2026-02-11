@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Text;
+using System.Linq; // Last()を使うために必要
 
 public class UIManager : MonoBehaviour
 {
@@ -15,17 +16,18 @@ public class UIManager : MonoBehaviour
     public Text dateText;
     public Text cashText;
     public Text debtText;
-    public Text statusText; // ファン数などの数値
+    public Text statusText;
     public Text ledgerText;
     public Text trendText;
     public Text bookingText;
+    public Text latestSongText; // ★追加：最新曲情報
 
-    [Header("Main Screen Sliders (Visuals)")]
-    public Slider mentalSlider;      // メンタル (0-100)
-    public Slider fatigueSlider;     // 疲労度 (0-100)
-    public Slider performanceSlider; // 実力 (目安 0-100)
+    [Header("Main Screen Sliders")]
+    public Slider mentalSlider;
+    public Slider fatigueSlider;
+    public Slider performanceSlider;
 
-    [Header("Result Screen Objects")]
+    [Header("Result Screen")]
     public Text resultLogText;
 
     private GameManager gameManager;
@@ -34,8 +36,6 @@ public class UIManager : MonoBehaviour
     {
         gameManager = gm;
     }
-
-    // --- 画面切り替え ---
 
     public void ShowStartScreen()
     {
@@ -60,8 +60,8 @@ public class UIManager : MonoBehaviour
         resultPanel.SetActive(true);
 
         StringBuilder sb = new StringBuilder();
-        sb.AppendLine($"【Day {report.day} の結果】");
-        sb.AppendLine($"収支変動: {report.cashChange:N0}円");
+        sb.AppendLine($"【Day {report.day} 結果報告】");
+        sb.AppendLine($"収支: {report.cashChange:N0}円");
         sb.AppendLine("----------------");
         foreach (var log in report.logs)
         {
@@ -92,45 +92,25 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // --- 表示更新 ---
-
     void RefreshMainUI()
     {
         if (gameManager == null) return;
 
         dateText.text = $"Day: {gameManager.currentDay}";
-
         cashText.text = $"Cash: ?{gameManager.financial.currentCash:N0}";
         cashText.color = gameManager.financial.currentCash < 0 ? Color.red : Color.white;
-
         debtText.text = $"Debt: ?{gameManager.financial.currentDebt:N0}";
 
         var g = gameManager.idol.groupData;
         var m = gameManager.market;
 
-        // テキスト更新
-        statusText.text = $"Fans: {g.fans:N0}\nGenre: {g.genre}"; // 詳細はスライダーで見るので簡略化
+        statusText.text = $"Fans: {g.fans:N0}\nGenre: {g.genre}";
         trendText.text = $"Trend: {m.currentTrend} {(m.isIceAge ? "<color=cyan>(ICE AGE)</color>" : "")}";
 
-        // --- スライダー更新 (New!) ---
-        if (mentalSlider != null)
-        {
-            mentalSlider.value = g.mental / 100f;
-            // メンタルが低いとバーの色を変える等の処理をしても良い
-        }
+        if (mentalSlider != null) mentalSlider.value = g.mental / 100f;
+        if (fatigueSlider != null) fatigueSlider.value = g.fatigue / 100f;
+        if (performanceSlider != null) performanceSlider.value = g.performance / 100f;
 
-        if (fatigueSlider != null)
-        {
-            fatigueSlider.value = g.fatigue / 100f;
-        }
-
-        if (performanceSlider != null)
-        {
-            // 実力は上限がないが、とりあえず100を基準にバーを表示
-            performanceSlider.value = g.performance / 100f;
-        }
-
-        // 帳簿リスト
         string ledgerStr = "【入出金予定】\n";
         int count = 0;
         foreach (var t in gameManager.financial.pendingTransactions)
@@ -143,7 +123,6 @@ public class UIManager : MonoBehaviour
         }
         ledgerText.text = ledgerStr;
 
-        // 予約リスト
         string bookingStr = "【ライブ予約】\n";
         if (gameManager.idol.activeBookings.Count == 0) bookingStr += "なし";
         else
@@ -155,5 +134,19 @@ public class UIManager : MonoBehaviour
             }
         }
         bookingText.text = bookingStr;
+
+        // ★追加：最新曲情報の表示
+        if (latestSongText != null)
+        {
+            if (g.discography.Count > 0)
+            {
+                var song = g.discography.Last();
+                latestSongText.text = $"最新曲: {song.title}\n最高位: {song.peakRank}位\n累積売上: {song.totalSales:N0}枚";
+            }
+            else
+            {
+                latestSongText.text = "最新曲: なし";
+            }
+        }
     }
 }

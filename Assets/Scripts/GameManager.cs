@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; // シーン管理用
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -19,12 +19,10 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        // 初期化順序
         idol.Initialize(financial, market, staff, this);
         staff.Initialize(financial);
         events.Initialize(idol, financial);
         uiManager.Initialize(this);
-
         uiManager.ShowStartScreen();
     }
 
@@ -38,20 +36,11 @@ public class GameManager : MonoBehaviour
         switch (origin)
         {
             case ProducerOrigin.OldAgency:
-                startCash = 100000000;
-                startDebt = 100000000;
-                interest = 0.02f;
-                break;
+                startCash = 100000000; startDebt = 100000000; interest = 0.02f; break;
             case ProducerOrigin.Venture:
-                startCash = 50000000;
-                startDebt = 0;
-                interest = 0;
-                break;
+                startCash = 50000000; startDebt = 0; interest = 0; break;
             case ProducerOrigin.Indie:
-                startCash = 5000000;
-                startDebt = 0;
-                interest = 0;
-                break;
+                startCash = 5000000; startDebt = 0; interest = 0; break;
         }
 
         currentDay = 1;
@@ -64,7 +53,6 @@ public class GameManager : MonoBehaviour
         uiManager.ShowMainScreen();
     }
 
-    // --- メイン処理 ---
     private void ExecuteAction(string actionType, int param = 0)
     {
         if (isGameOver || isGameClear) return;
@@ -79,7 +67,9 @@ public class GameManager : MonoBehaviour
             case "Rest": idol.DoRest(report); break;
             case "BookVenue": idol.BookVenue(param, 3, report); break;
             case "Hire": staff.HireStaff((StaffType)param, 1, report); break;
-            case "ChangeConcept": idol.ChangeConcept((IdolGenre)param, report); break; // 追加
+            case "ChangeConcept": idol.ChangeConcept((IdolGenre)param, report); break;
+            // ★追加：新曲リリース (param=予算Tier)
+            case "ProduceSong": idol.ProduceSong(param, report); break;
             case "Next": report.AddLog("何もしなかった。"); break;
         }
 
@@ -94,12 +84,17 @@ public class GameManager : MonoBehaviour
             market.UpdateTrendRandomly(report);
         }
 
+        // ★追加：7日ごとに週間ランキング集計
+        if (currentDay % 7 == 0)
+        {
+            idol.ProcessWeeklySales(report);
+        }
+
         events.CheckDailyEvent(report);
         idol.CheckAndHoldLive(currentDay, report);
         idol.DailyUpdate();
 
         report.cashChange = financial.dailyCashChange;
-
         CheckGameEnd();
         uiManager.ShowResultScreen(report);
     }
@@ -109,40 +104,34 @@ public class GameManager : MonoBehaviour
         if (financial.currentCash < 0)
         {
             isGameOver = true;
-            Debug.Log("GAME OVER: 破産");
+            Debug.Log("GAME OVER");
         }
-
         if (idol.groupData.hasDoneDome && financial.currentDebt == 0 && financial.currentCash >= 300000000)
         {
             isGameClear = true;
-            Debug.Log("GAME CLEAR: 伝説達成");
+            Debug.Log("GAME CLEAR");
         }
     }
 
-    // --- リトライ機能 ---
     public void RetryGame()
     {
-        // 現在のシーンを再読み込み
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    // --- Unity UI Button用ラッパー関数群 ---
-
+    // --- Button Handlers ---
     public void OnClickLesson() { ExecuteAction("Lesson"); }
     public void OnClickPromo() { ExecuteAction("Promo"); }
     public void OnClickRest() { ExecuteAction("Rest"); }
     public void OnClickNext() { ExecuteAction("Next"); }
-
-    // 予約系
     public void OnClickBookZepp() { ExecuteAction("BookVenue", 1); }
     public void OnClickBookDome() { ExecuteAction("BookVenue", 3); }
-
-    // 雇用系
     public void OnClickHireTrainer() { ExecuteAction("Hire", 0); }
     public void OnClickHireMarketer() { ExecuteAction("Hire", 1); }
-
-    // コンセプト変更系 (0=KAWAII, 1=COOL, 2=ROCK, 3=TRADITIONAL)
     public void OnClickChangeGenreToKawaii() { ExecuteAction("ChangeConcept", 0); }
     public void OnClickChangeGenreToCool() { ExecuteAction("ChangeConcept", 1); }
     public void OnClickChangeGenreToRock() { ExecuteAction("ChangeConcept", 2); }
+
+    // ★追加：楽曲リリースボタン用
+    public void OnClickProduceSongLow() { ExecuteAction("ProduceSong", 0); }  // 低予算
+    public void OnClickProduceSongHigh() { ExecuteAction("ProduceSong", 1); } // 高予算
 }

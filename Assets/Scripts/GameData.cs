@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 // --- 基本データ ---
 
@@ -22,6 +23,9 @@ public class IdolGroup
     public int fatigue = 0;
     public IdolGenre genre = IdolGenre.KAWAII;
     public bool hasDoneDome = false;
+
+    // ★追加：リリース済み楽曲リスト
+    public List<Song> discography = new List<Song>();
 }
 
 public enum IdolGenre { KAWAII, COOL, ROCK, TRADITIONAL }
@@ -61,17 +65,15 @@ public class VenueBooking
     public bool isCanceled;
 }
 
-// --- 新規追加：ゲーム設定データ ---
+// --- ゲーム設定データ ---
 
-// プロデューサーの出自（難易度）
 public enum ProducerOrigin
 {
-    OldAgency,  // 老舗：借金1億、コネあり、利子あり
-    Venture,    // ベンチャー：資金5000万、短期ノルマあり
-    Indie       // 叩き上げ：資金500万、借金なし、ハードモード
+    OldAgency,
+    Venture,
+    Indie
 }
 
-// 1日の活動レポート（ログ用）
 [Serializable]
 public class DailyReport
 {
@@ -82,5 +84,25 @@ public class DailyReport
     public void AddLog(string text)
     {
         logs.Add(text);
+    }
+}
+
+// --- ★新規追加：楽曲データ ---
+[Serializable]
+public class Song
+{
+    public string title;
+    public IdolGenre genre;
+    public int quality;      // 楽曲の完成度 (1-100)
+    public int releaseDay;   // リリース日
+    public long totalSales;  // 総売上枚数
+    public int peakRank;     // 最高順位
+
+    // 現在の勢い（週が経つごとに減衰）
+    public float GetCurrentMomentum(int currentDay)
+    {
+        int weeksOld = (currentDay - releaseDay) / 7;
+        // 1週目は1.0, 以降は指数関数的に減衰 (最低0.1)
+        return Mathf.Max(0.1f, 1.0f - (weeksOld * 0.15f));
     }
 }
