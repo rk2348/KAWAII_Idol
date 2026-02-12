@@ -14,7 +14,8 @@ public class Transaction
 [Serializable]
 public class IdolGroup
 {
-    public string groupName = "FRUITS ZIPPER";
+    public string groupName = "Default Group"; // 初期値
+    public int memberCount = 1; // ★追加：メンバー人数
     public int fans = 1000;
     public int performance = 10;
     public int mental = 100;
@@ -22,7 +23,6 @@ public class IdolGroup
     public IdolGenre genre = IdolGenre.KAWAII;
     public bool hasDoneDome = false;
 
-    // ★追加：グッズ在庫数
     public int goodsStock = 0;
 
     public int hospitalDaysLeft = 0;
@@ -97,12 +97,12 @@ public class Song
     public int releaseDay;
     public long totalSales;
     public int peakRank;
-    public bool hasMV = false; // ★追加：MVがあるかどうか
+    public bool hasMV = false;
 
     public float GetCurrentMomentum(int currentDay)
     {
         int weeksOld = (currentDay - releaseDay) / 7;
-        float mvBonus = hasMV ? 1.2f : 1.0f; // MVがあると勢いが持続しやすい
+        float mvBonus = hasMV ? 1.2f : 1.0f;
         return Mathf.Max(0.1f, (1.0f - (weeksOld * 0.15f)) * mvBonus);
     }
 }

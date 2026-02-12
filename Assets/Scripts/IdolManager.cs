@@ -22,6 +22,13 @@ public class IdolManager : MonoBehaviour
         activeBookings.Clear();
     }
 
+    // ★追加：セットアップ時に呼ばれる
+    public void SetGroupInfo(string name, int members)
+    {
+        groupData.groupName = name;
+        groupData.memberCount = members;
+    }
+
     public void CheckConditionEvents(DailyReport report)
     {
         if (groupData.fatigue >= 100 && groupData.hospitalDaysLeft <= 0)
@@ -61,11 +68,8 @@ public class IdolManager : MonoBehaviour
         }
     }
 
-    // --- アクション ---
-
     public void DoLesson(DailyReport report)
     {
-        // ★変更：スタジオ代・講師謝礼
         int cost = 50000;
         if (financial.currentCash < cost)
         {
@@ -87,7 +91,6 @@ public class IdolManager : MonoBehaviour
 
     public void DoPromotion(DailyReport report)
     {
-        // ★変更：SNS広告・Web広告費
         int cost = 100000;
         if (financial.currentCash < cost)
         {
@@ -99,7 +102,10 @@ public class IdolManager : MonoBehaviour
         financial.dailyCashChange -= cost;
 
         float bonus = staffManager.GetStaffBonus(StaffType.Marketer);
-        int fanIncrease = (int)(Random.Range(15, 30) * bonus);
+        // 人数が多いと目立ちやすい（少しボーナス）
+        float memberBonus = 1.0f + (groupData.memberCount * 0.05f);
+
+        int fanIncrease = (int)(Random.Range(15, 30) * bonus * memberBonus);
         groupData.fans += fanIncrease;
         groupData.mental -= 5;
         groupData.fatigue += 5;
@@ -109,21 +115,22 @@ public class IdolManager : MonoBehaviour
 
     public void DoRest(DailyReport report)
     {
-        // ★変更：美容・ケア代
-        int cost = 30000;
-        financial.currentCash -= cost;
-        financial.dailyCashChange -= cost;
+        // ★変更：人数分のケア代がかかる
+        int costPerMember = 5000;
+        long totalCost = costPerMember * groupData.memberCount;
+
+        financial.currentCash -= totalCost;
+        financial.dailyCashChange -= totalCost;
 
         groupData.fatigue = 0;
         groupData.mental = Mathf.Min(100, groupData.mental + 30);
-        report.AddLog($"[休暇] リフレッシュ / 美容・衣装ケア代 -{cost:N0}円");
+        report.AddLog($"[休暇] 全員リフレッシュ / ケア費({groupData.memberCount}人分) -{totalCost:N0}円");
     }
 
-    // ★追加：グッズ制作
     public void ProduceGoods(DailyReport report)
     {
-        int unitCost = 500; // 原価
-        int amount = 1000;  // 1ロット
+        int unitCost = 500;
+        int amount = 1000;
         long totalCost = unitCost * amount;
 
         if (financial.currentCash < totalCost)
@@ -139,7 +146,6 @@ public class IdolManager : MonoBehaviour
         report.AddLog($"[グッズ] タオル・Tシャツ制作 (在庫+{amount}) / 制作費 -{totalCost:N0}円");
     }
 
-    // ★追加：MV制作
     public void MakeMV(DailyReport report)
     {
         if (groupData.discography.Count == 0)
@@ -155,10 +161,12 @@ public class IdolManager : MonoBehaviour
             return;
         }
 
-        long cost = 3000000; // 300万円
+        // MVも人数が多いと映り込み調整などで少し高くなる想定
+        long cost = 3000000 + (groupData.memberCount * 100000);
+
         if (financial.currentCash < cost)
         {
-            report.AddLog("<color=red>[制作不可]</color> MV制作費不足 (300万円必要)");
+            report.AddLog($"<color=red>[制作不可]</color> MV制作費不足 ({cost:N0}円必要)");
             return;
         }
 
@@ -174,17 +182,20 @@ public class IdolManager : MonoBehaviour
 
     public void ChangeConcept(IdolGenre newGenre, DailyReport report)
     {
-        int cost = 3000000;
-        if (financial.currentCash < cost)
+        // ★変更：人数分の衣装代がかかる
+        long costPerMember = 300000;
+        long totalCost = costPerMember * groupData.memberCount;
+
+        if (financial.currentCash < totalCost)
         {
-            report.AddLog("<color=red>[変更不可]</color> 資金不足 (衣装総入れ替えに300万円必要)");
+            report.AddLog($"<color=red>[変更不可]</color> 資金不足 (衣装費 {totalCost:N0}円必要)");
             return;
         }
 
         if (groupData.genre == newGenre) return;
 
-        financial.currentCash -= cost;
-        financial.dailyCashChange -= cost;
+        financial.currentCash -= totalCost;
+        financial.dailyCashChange -= totalCost;
 
         int lostFans = (int)(groupData.fans * 0.2f);
         groupData.fans -= lostFans;
@@ -193,32 +204,33 @@ public class IdolManager : MonoBehaviour
         IdolGenre oldGenre = groupData.genre;
         groupData.genre = newGenre;
 
-        report.AddLog($"<color=yellow>[路線変更]</color> {oldGenre} -> {newGenre} / 新衣装費 -{cost:N0}円");
+        report.AddLog($"<color=yellow>[路線変更]</color> {oldGenre} -> {newGenre} / 新衣装費({groupData.memberCount}人分) -{totalCost:N0}円");
     }
 
     public void ProduceSong(int budgetTier, DailyReport report, string songTitle)
     {
-        // ★変更：詳細な内訳（楽曲制作＋衣装制作＋振付）
-        long songCost, costumeCost, choreoCost;
+        long songCost, costumeUnitCost, choreoCost;
 
         if (budgetTier == 0) // 低予算
         {
-            songCost = 500000;    // 楽曲
-            costumeCost = 300000; // 衣装
-            choreoCost = 200000;  // 振付
+            songCost = 500000;
+            costumeUnitCost = 50000; // 1人あたり5万
+            choreoCost = 200000;
         }
         else // 豪華
         {
             songCost = 2000000;
-            costumeCost = 2000000;
+            costumeUnitCost = 200000; // 1人あたり20万
             choreoCost = 1000000;
         }
 
-        long totalCost = songCost + costumeCost + choreoCost;
+        // ★変更：衣装代は人数分かかる
+        long totalCostumeCost = costumeUnitCost * groupData.memberCount;
+        long totalCost = songCost + totalCostumeCost + choreoCost;
 
         if (financial.currentCash < totalCost)
         {
-            report.AddLog("<color=red>[制作不可]</color> 資金不足");
+            report.AddLog($"<color=red>[制作不可]</color> 資金不足 ({totalCost:N0}円必要)");
             return;
         }
 
@@ -240,7 +252,7 @@ public class IdolManager : MonoBehaviour
 
         groupData.discography.Add(newSong);
         report.AddLog($"<color=green>[新曲リリース]</color> 『{newSong.title}』(Q:{quality})");
-        report.AddLog($"[内訳] 楽曲:-{songCost:N0} 衣装:-{costumeCost:N0} 振付:-{choreoCost:N0}");
+        report.AddLog($"[内訳] 楽曲:-{songCost:N0} 衣装({groupData.memberCount}人):-{totalCostumeCost:N0} 振付:-{choreoCost:N0}");
     }
 
     public void ProcessWeeklySales(DailyReport report)
@@ -362,23 +374,26 @@ public class IdolManager : MonoBehaviour
 
         if (booking.setlist == null || booking.setlist.Count == 0) AutoGenerateSetlist(booking);
 
-        // 会場費残金
         long remainingCost = (long)(booking.venue.baseCost * 0.7f);
         financial.currentCash -= remainingCost;
         financial.dailyCashChange -= remainingCost;
 
-        // ★追加：当日経費（交通費・宿泊費・音響照明スタッフ費）
-        // 規模が大きいほどスタッフが増え、移動も大変になる
-        long staffCost = booking.venue.capacity * 200; // 300人箱なら6万、ドームなら1000万
-        long travelCost = 50000 + (booking.venue.capacity * 50);
+        // ★変更：交通費・宿泊費（人数依存）
+        long staffCost = booking.venue.capacity * 200;
 
-        financial.currentCash -= (staffCost + travelCost);
-        financial.dailyCashChange -= (staffCost + travelCost);
+        // 1人あたり移動費 + 車両費など
+        long travelCostPerMember = 10000;
+        long baseTravelCost = 30000;
+        if (booking.venue.capacity > 1000) { travelCostPerMember = 50000; baseTravelCost = 200000; } // 遠征
+
+        long totalTravelCost = baseTravelCost + (travelCostPerMember * groupData.memberCount);
+
+        financial.currentCash -= (staffCost + totalTravelCost);
+        financial.dailyCashChange -= (staffCost + totalTravelCost);
 
         report.AddLog($"[支出] 会場費残金:-{remainingCost:N0}");
-        report.AddLog($"[経費] 音響照明スタッフ:-{staffCost:N0} 交通宿泊費:-{travelCost:N0}");
+        report.AddLog($"[経費] スタッフ費:-{staffCost:N0} 交通宿泊費({groupData.memberCount}人分):-{totalTravelCost:N0}");
 
-        // --- パフォーマンス計算 ---
         float totalSetlistPower = 0;
         int songCount = 0;
 
@@ -406,18 +421,16 @@ public class IdolManager : MonoBehaviour
         int baseAudience = (int)(groupData.fans * perfRate * trendBonus);
         int actualAudience = Mathf.Min(baseAudience, booking.venue.capacity);
 
-        // チケット売上
         int ticketPrice = 3000 + (booking.venue.capacity / 10);
         long ticketSales = (long)actualAudience * ticketPrice;
 
-        // ★追加：グッズ売上（来場者の30%が2000円分買うと仮定）
         long goodsSales = 0;
         if (groupData.goodsStock > 0)
         {
             int buyers = (int)(actualAudience * 0.3f);
             int soldCount = Mathf.Min(buyers, groupData.goodsStock);
             groupData.goodsStock -= soldCount;
-            goodsSales = soldCount * 2000; // 売値
+            goodsSales = soldCount * 2000;
             report.AddLog($"[物販] グッズ売上 +{goodsSales:N0}円 ({soldCount}個販売)");
         }
         else
@@ -451,6 +464,13 @@ public class IdolManager : MonoBehaviour
             groupData.hasDoneDome = true;
             report.AddLog("<color=magenta>【伝説】東京ドーム満員達成！！</color>");
         }
+    }
+
+    // 月末のメンバー生活費支払い処理（FinancialManagerから呼ばれることを想定、あるいはGameManagerで呼ぶ）
+    public long CalcMonthlyMemberCost()
+    {
+        // 1人あたり月15万の最低生活費・寮費など
+        return 150000 * groupData.memberCount;
     }
 
     public void DailyUpdate()

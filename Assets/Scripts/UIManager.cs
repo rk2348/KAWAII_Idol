@@ -1,12 +1,13 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Text;
-using System.Linq; // Last()を使うために必要
+using System.Linq;
 
 public class UIManager : MonoBehaviour
 {
     [Header("Panels")]
     public GameObject startPanel;
+    public SetupPanel setupPanel; // ★追加
     public GameObject mainPanel;
     public GameObject resultPanel;
     public GameObject gameOverPanel;
@@ -26,7 +27,7 @@ public class UIManager : MonoBehaviour
     public Text ledgerText;
     public Text trendText;
     public Text bookingText;
-    public Text latestSongText; // ★追加：最新曲情報
+    public Text latestSongText;
 
     [Header("Main Screen Sliders")]
     public Slider mentalSlider;
@@ -43,20 +44,30 @@ public class UIManager : MonoBehaviour
         gameManager = gm;
 
         if (songNamePanel != null) songNamePanel.Setup(gm);
+        if (setupPanel != null) setupPanel.Setup(gm); // ★追加
     }
 
     public void ShowStartScreen()
     {
         startPanel.SetActive(true);
+        if (setupPanel != null) setupPanel.gameObject.SetActive(false);
         mainPanel.SetActive(false);
         resultPanel.SetActive(false);
         gameOverPanel.SetActive(false);
         gameClearPanel.SetActive(false);
     }
 
+    // ★追加：セットアップ画面を表示
+    public void ShowSetupScreen()
+    {
+        startPanel.SetActive(false);
+        setupPanel.Open();
+    }
+
     public void ShowMainScreen()
     {
         startPanel.SetActive(false);
+        if (setupPanel != null) setupPanel.gameObject.SetActive(false);
         mainPanel.SetActive(true);
         resultPanel.SetActive(false);
         RefreshMainUI();
@@ -112,7 +123,8 @@ public class UIManager : MonoBehaviour
         var g = gameManager.idol.groupData;
         var m = gameManager.market;
 
-        statusText.text = $"Fans: {g.fans:N0}\nGenre: {g.genre}";
+        // ★変更：グループ名とメンバー数を表示
+        statusText.text = $"{g.groupName} ({g.memberCount}人)\nFans: {g.fans:N0}\nGenre: {g.genre}";
         trendText.text = $"Trend: {m.currentTrend} {(m.isIceAge ? "<color=cyan>(ICE AGE)</color>" : "")}";
 
         if (mentalSlider != null) mentalSlider.value = g.mental / 100f;
@@ -143,7 +155,6 @@ public class UIManager : MonoBehaviour
         }
         bookingText.text = bookingStr;
 
-        // ★追加：最新曲情報の表示
         if (latestSongText != null)
         {
             if (g.discography.Count > 0)
@@ -158,14 +169,11 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // ★追加：セットリスト画面を開く
     public void ShowSetlistScreen()
     {
-        // IdolManagerを渡して初期化
         setlistPanel.Open(gameManager.idol);
     }
 
-    // ★追加: 曲名入力画面を開く
     public void ShowSongProductionPanel(int budgetTier, int nextSongNum)
     {
         songNamePanel.Open(budgetTier, nextSongNum);

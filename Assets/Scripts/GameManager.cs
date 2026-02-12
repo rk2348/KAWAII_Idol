@@ -29,9 +29,24 @@ public class GameManager : MonoBehaviour
         uiManager.ShowStartScreen();
     }
 
+    // ★変更：ここからセットアップ画面へ遷移
     public void StartGame(int originIndex)
     {
         origin = (ProducerOrigin)originIndex;
+        // セットアップ画面を表示して、名前と人数を決めさせる
+        uiManager.ShowSetupScreen();
+    }
+
+    // ★追加：セットアップ画面で決定ボタンが押されたらここに来る
+    public void OnSetupConfirmed(string groupName, int memberCount)
+    {
+        idol.SetGroupInfo(groupName, memberCount);
+        StartGameLogic();
+    }
+
+    // 実際のゲーム開始処理（旧StartGameの後半部分）
+    private void StartGameLogic()
+    {
         long startCash = 0;
         long startDebt = 0;
         float interest = 0;
@@ -53,13 +68,11 @@ public class GameManager : MonoBehaviour
         financial.Initialize(startCash, startDebt, interest);
         market.UpdateTrendRandomly(new DailyReport());
 
-        // ★追加：グループ立ち上げ初期費用（オーディション・宣材・ロゴ）
-        long setupCost = 2000000; // 200万円
+        // 初期費用（オーディション・宣材・ロゴ + 人数分の支度金）
+        long setupCost = 2000000 + (idol.groupData.memberCount * 100000);
         financial.currentCash -= setupCost;
 
-        // ログはUI表示前に処理されるためConsoleに出すか、初日のレポートに含める工夫が必要
-        // ここでは初日の所持金に反映済みとする
-        Debug.Log($"初期費用（オーディション・宣材等）として {setupCost:N0}円 支払いました。");
+        Debug.Log($"初期費用（オーディション・人数分初期費）として {setupCost:N0}円 支払いました。");
 
         uiManager.ShowMainScreen();
     }
@@ -92,11 +105,8 @@ public class GameManager : MonoBehaviour
                 case "Hire": staff.HireStaff((StaffType)param, 1, report); break;
                 case "ChangeConcept": idol.ChangeConcept((IdolGenre)param, report); break;
                 case "ProduceSong": idol.ProduceSong(param, report, pendingSongTitle); break;
-
-                // ★追加アクション
                 case "ProduceGoods": idol.ProduceGoods(report); break;
                 case "MakeMV": idol.MakeMV(report); break;
-
                 case "Next": report.AddLog("何もしなかった。"); break;
             }
         }
@@ -105,7 +115,6 @@ public class GameManager : MonoBehaviour
             report.AddLog("<color=grey>【行動不能】メンバー不在のため何もできません...</color>");
         }
 
-        // セットリスト安全装置
         var todayLive = idol.activeBookings.FirstOrDefault(b => b.eventDay == currentDay && !b.isCanceled);
         if (todayLive != null && todayLive.setlist.Count == 0)
         {
@@ -119,8 +128,14 @@ public class GameManager : MonoBehaviour
         if (currentDay % 30 == 0)
         {
             staff.PayMonthlySalaries(report);
-            // ★変更: 名前をより一般的なCostsに変更
             financial.PayMonthlyCosts(report);
+
+            // ★追加：メンバー生活費（人数分）
+            long livingCost = idol.CalcMonthlyMemberCost();
+            financial.currentCash -= livingCost;
+            financial.dailyCashChange -= livingCost;
+            report.AddLog($"[固定費] メンバー生活費・寮費: -{livingCost:N0}円");
+
             market.UpdateTrendRandomly(report);
         }
 
@@ -157,7 +172,6 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    // --- Button Handlers ---
     public void OnClickLesson() { ExecuteAction("Lesson"); }
     public void OnClickPromo() { ExecuteAction("Promo"); }
     public void OnClickRest() { ExecuteAction("Rest"); }
@@ -169,25 +183,9 @@ public class GameManager : MonoBehaviour
     public void OnClickChangeGenreToKawaii() { ExecuteAction("ChangeConcept", 0); }
     public void OnClickChangeGenreToCool() { ExecuteAction("ChangeConcept", 1); }
     public void OnClickChangeGenreToRock() { ExecuteAction("ChangeConcept", 2); }
-
-    public void OnClickProduceSongLow()
-    {
-        int nextNum = idol.groupData.discography.Count + 1;
-        uiManager.ShowSongProductionPanel(0, nextNum);
-    }
-
-    public void OnClickProduceSongHigh()
-    {
-        int nextNum = idol.groupData.discography.Count + 1;
-        uiManager.ShowSongProductionPanel(1, nextNum);
-    }
-
-    public void OnClickSetlist()
-    {
-        uiManager.ShowSetlistScreen();
-    }
-
-    // ★追加：新機能用ボタンハンドラ
+    public void OnClickProduceSongLow() { int nextNum = idol.groupData.discography.Count + 1; uiManager.ShowSongProductionPanel(0, nextNum); }
+    public void OnClickProduceSongHigh() { int nextNum = idol.groupData.discography.Count + 1; uiManager.ShowSongProductionPanel(1, nextNum); }
+    public void OnClickSetlist() { uiManager.ShowSetlistScreen(); }
     public void OnClickProduceGoods() { ExecuteAction("ProduceGoods"); }
     public void OnClickMakeMV() { ExecuteAction("MakeMV"); }
 }
