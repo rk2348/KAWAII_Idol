@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Linq; // セットリストの安全装置チェックに必要
+using System.Linq;
 
 public class GameManager : MonoBehaviour
 {
@@ -18,7 +18,6 @@ public class GameManager : MonoBehaviour
     public bool isGameClear = false;
     public ProducerOrigin origin;
 
-    // ★追加：曲名入力待ちの一時保存変数
     private string pendingSongTitle = "";
 
     void Start()
@@ -54,14 +53,21 @@ public class GameManager : MonoBehaviour
         financial.Initialize(startCash, startDebt, interest);
         market.UpdateTrendRandomly(new DailyReport());
 
+        // ★追加：グループ立ち上げ初期費用（オーディション・宣材・ロゴ）
+        long setupCost = 2000000; // 200万円
+        financial.currentCash -= setupCost;
+
+        // ログはUI表示前に処理されるためConsoleに出すか、初日のレポートに含める工夫が必要
+        // ここでは初日の所持金に反映済みとする
+        Debug.Log($"初期費用（オーディション・宣材等）として {setupCost:N0}円 支払いました。");
+
         uiManager.ShowMainScreen();
     }
 
-    // ★追加：曲名入力パネルから呼ばれるメソッド
     public void OnSongNameConfirmed(string title, int budgetTier)
     {
-        pendingSongTitle = title;      // 入力された曲名を保存
-        ExecuteAction("ProduceSong", budgetTier); // アクション実行へ
+        pendingSongTitle = title;
+        ExecuteAction("ProduceSong", budgetTier);
     }
 
     private void ExecuteAction(string actionType, int param = 0)
@@ -71,7 +77,6 @@ public class GameManager : MonoBehaviour
         DailyReport report = new DailyReport();
         report.day = currentDay;
 
-        // 状態異常チェック（入院・失踪など）
         idol.CheckConditionEvents(report);
 
         bool canAct = idol.groupData.IsAvailable();
@@ -86,11 +91,11 @@ public class GameManager : MonoBehaviour
                 case "BookVenue": idol.BookVenue(param, 3, report); break;
                 case "Hire": staff.HireStaff((StaffType)param, 1, report); break;
                 case "ChangeConcept": idol.ChangeConcept((IdolGenre)param, report); break;
+                case "ProduceSong": idol.ProduceSong(param, report, pendingSongTitle); break;
 
-                // ★変更：曲名を渡して制作を実行
-                case "ProduceSong":
-                    idol.ProduceSong(param, report, pendingSongTitle);
-                    break;
+                // ★追加アクション
+                case "ProduceGoods": idol.ProduceGoods(report); break;
+                case "MakeMV": idol.MakeMV(report); break;
 
                 case "Next": report.AddLog("何もしなかった。"); break;
             }
@@ -100,17 +105,12 @@ public class GameManager : MonoBehaviour
             report.AddLog("<color=grey>【行動不能】メンバー不在のため何もできません...</color>");
         }
 
-        // --- ★セットリスト安全装置 ---
-        // 今日のライブがある場合、セットリストが空なら自動生成する
+        // セットリスト安全装置
         var todayLive = idol.activeBookings.FirstOrDefault(b => b.eventDay == currentDay && !b.isCanceled);
-        if (todayLive != null)
+        if (todayLive != null && todayLive.setlist.Count == 0)
         {
-            if (todayLive.setlist.Count == 0)
-            {
-                idol.AutoGenerateSetlist(todayLive);
-            }
+            idol.AutoGenerateSetlist(todayLive);
         }
-        // ------------------------------
 
         currentDay++;
 
@@ -119,7 +119,8 @@ public class GameManager : MonoBehaviour
         if (currentDay % 30 == 0)
         {
             staff.PayMonthlySalaries(report);
-            financial.PayMonthlyInterest(report);
+            // ★変更: 名前をより一般的なCostsに変更
+            financial.PayMonthlyCosts(report);
             market.UpdateTrendRandomly(report);
         }
 
@@ -169,7 +170,6 @@ public class GameManager : MonoBehaviour
     public void OnClickChangeGenreToCool() { ExecuteAction("ChangeConcept", 1); }
     public void OnClickChangeGenreToRock() { ExecuteAction("ChangeConcept", 2); }
 
-    // ★変更：ボタンを押したら即実行せず、名前入力パネルを開く
     public void OnClickProduceSongLow()
     {
         int nextNum = idol.groupData.discography.Count + 1;
@@ -182,9 +182,12 @@ public class GameManager : MonoBehaviour
         uiManager.ShowSongProductionPanel(1, nextNum);
     }
 
-    // ★追加：セットリスト編集画面を開く
     public void OnClickSetlist()
     {
         uiManager.ShowSetlistScreen();
     }
+
+    // ★追加：新機能用ボタンハンドラ
+    public void OnClickProduceGoods() { ExecuteAction("ProduceGoods"); }
+    public void OnClickMakeMV() { ExecuteAction("MakeMV"); }
 }

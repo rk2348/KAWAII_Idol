@@ -31,8 +31,7 @@ public class IdolManager : MonoBehaviour
             financial.currentCash -= hospitalCost;
             financial.dailyCashChange -= hospitalCost;
             groupData.fatigue = 50;
-            report.AddLog($"<color=red>【緊急搬送】メンバーが過労で倒れました！！</color>");
-            report.AddLog($"[ペナルティ] 3日間行動不能 / 入院費 -{hospitalCost:N0}円");
+            report.AddLog($"<color=red>【緊急搬送】過労ダウン！ 入院費 -{hospitalCost:N0}円</color>");
             return;
         }
 
@@ -45,8 +44,7 @@ public class IdolManager : MonoBehaviour
             groupData.mental = 30;
             int lostFans = (int)(groupData.fans * 0.3f);
             groupData.fans -= lostFans;
-            report.AddLog($"<color=red>【失踪】メンバーと連絡が取れません！！</color>");
-            report.AddLog($"[ペナルティ] 5日間行動不能 / ファン減少 -{lostFans}人 / 捜索費 -{searchCost:N0}円");
+            report.AddLog($"<color=red>【失踪】メンバー音信不通。捜索費 -{searchCost:N0}円</color>");
             return;
         }
 
@@ -67,21 +65,14 @@ public class IdolManager : MonoBehaviour
 
     public void DoLesson(DailyReport report)
     {
-        if (groupData.fatigue > 70)
+        // ★変更：スタジオ代・講師謝礼
+        int cost = 50000;
+        if (financial.currentCash < cost)
         {
-            if (Random.Range(0, 100) < 30)
-            {
-                int injuryCost = 200000;
-                financial.currentCash -= injuryCost;
-                financial.dailyCashChange -= injuryCost;
-                groupData.fatigue += 10;
-                groupData.mental -= 10;
-                report.AddLog($"<color=red>[事故]</color> 疲労で怪我をしました！ 治療費 -{injuryCost:N0}円");
-                return;
-            }
+            report.AddLog("<color=red>資金不足でレッスンスタジオを借りられません。</color>");
+            return;
         }
 
-        int cost = 50000;
         financial.currentCash -= cost;
         financial.dailyCashChange -= cost;
 
@@ -91,46 +82,94 @@ public class IdolManager : MonoBehaviour
         groupData.performance += growth;
         groupData.fatigue += 15;
 
-        report.AddLog($"[レッスン] 実力+{growth} (疲労+15) / 費用 -{cost:N0}円");
-        if (fatiguePenalty < 1.0f) report.AddLog("<color=orange>※疲労で効率が落ちています</color>");
+        report.AddLog($"[レッスン] 実力+{growth} / スタジオ・講師代 -{cost:N0}円");
     }
 
     public void DoPromotion(DailyReport report)
     {
-        if (groupData.mental < 30)
+        // ★変更：SNS広告・Web広告費
+        int cost = 100000;
+        if (financial.currentCash < cost)
         {
-            if (Random.Range(0, 100) < 40)
-            {
-                int decrease = (int)(groupData.fans * 0.05f);
-                groupData.fans -= decrease;
-                groupData.fatigue += 5;
-                groupData.mental -= 5;
-                report.AddLog($"<color=red>[炎上]</color> メンタル不安定で塩対応をしてしまいました... ファン -{decrease}人");
-                return;
-            }
+            report.AddLog("<color=red>資金不足で広告が出せません。</color>");
+            return;
         }
 
-        int cost = 30000;
         financial.currentCash -= cost;
         financial.dailyCashChange -= cost;
 
         float bonus = staffManager.GetStaffBonus(StaffType.Marketer);
-        int fanIncrease = (int)(Random.Range(10, 20) * bonus);
+        int fanIncrease = (int)(Random.Range(15, 30) * bonus);
         groupData.fans += fanIncrease;
         groupData.mental -= 5;
         groupData.fatigue += 5;
 
-        report.AddLog($"[営業] ファン+{fanIncrease}人 (メンタル-5) / 費用 -{cost:N0}円");
+        report.AddLog($"[広告] ファン+{fanIncrease}人 / SNS・Web広告費 -{cost:N0}円");
     }
 
     public void DoRest(DailyReport report)
     {
-        groupData.fatigue = 0;
-        groupData.mental = Mathf.Min(100, groupData.mental + 30);
-        int cost = 10000;
+        // ★変更：美容・ケア代
+        int cost = 30000;
         financial.currentCash -= cost;
         financial.dailyCashChange -= cost;
-        report.AddLog($"[休暇] 完全リフレッシュ (メンタル+30 / 疲労0) / ケア費 -{cost:N0}円");
+
+        groupData.fatigue = 0;
+        groupData.mental = Mathf.Min(100, groupData.mental + 30);
+        report.AddLog($"[休暇] リフレッシュ / 美容・衣装ケア代 -{cost:N0}円");
+    }
+
+    // ★追加：グッズ制作
+    public void ProduceGoods(DailyReport report)
+    {
+        int unitCost = 500; // 原価
+        int amount = 1000;  // 1ロット
+        long totalCost = unitCost * amount;
+
+        if (financial.currentCash < totalCost)
+        {
+            report.AddLog("<color=red>[発注不可]</color> グッズ制作費が足りません。");
+            return;
+        }
+
+        financial.currentCash -= totalCost;
+        financial.dailyCashChange -= totalCost;
+        groupData.goodsStock += amount;
+
+        report.AddLog($"[グッズ] タオル・Tシャツ制作 (在庫+{amount}) / 制作費 -{totalCost:N0}円");
+    }
+
+    // ★追加：MV制作
+    public void MakeMV(DailyReport report)
+    {
+        if (groupData.discography.Count == 0)
+        {
+            report.AddLog("MVを作る曲がありません！");
+            return;
+        }
+
+        Song latestSong = groupData.discography.Last();
+        if (latestSong.hasMV)
+        {
+            report.AddLog("最新曲のMVは既に制作済みです。");
+            return;
+        }
+
+        long cost = 3000000; // 300万円
+        if (financial.currentCash < cost)
+        {
+            report.AddLog("<color=red>[制作不可]</color> MV制作費不足 (300万円必要)");
+            return;
+        }
+
+        financial.currentCash -= cost;
+        financial.dailyCashChange -= cost;
+
+        latestSong.hasMV = true;
+        int fanBoost = (int)(groupData.fans * 0.1f) + 500;
+        groupData.fans += fanBoost;
+
+        report.AddLog($"<color=cyan>[MV公開]</color> 『{latestSong.title}』MV完成！ ファン急増 +{fanBoost}人 / 制作費 -{cost:N0}円");
     }
 
     public void ChangeConcept(IdolGenre newGenre, DailyReport report)
@@ -138,7 +177,7 @@ public class IdolManager : MonoBehaviour
         int cost = 3000000;
         if (financial.currentCash < cost)
         {
-            report.AddLog("<color=red>[変更不可]</color> 資金不足 (300万円必要)");
+            report.AddLog("<color=red>[変更不可]</color> 資金不足 (衣装総入れ替えに300万円必要)");
             return;
         }
 
@@ -154,35 +193,54 @@ public class IdolManager : MonoBehaviour
         IdolGenre oldGenre = groupData.genre;
         groupData.genre = newGenre;
 
-        report.AddLog($"<color=yellow>[路線変更]</color> {oldGenre} -> {newGenre} へ転向。衣装費 -{cost:N0}円 / ファン減少 -{lostFans}人");
+        report.AddLog($"<color=yellow>[路線変更]</color> {oldGenre} -> {newGenre} / 新衣装費 -{cost:N0}円");
     }
 
-    public void ProduceSong(int budgetTier, DailyReport report)
+    public void ProduceSong(int budgetTier, DailyReport report, string songTitle)
     {
-        long cost = budgetTier == 0 ? 1000000 : 5000000;
-        if (financial.currentCash < cost)
+        // ★変更：詳細な内訳（楽曲制作＋衣装制作＋振付）
+        long songCost, costumeCost, choreoCost;
+
+        if (budgetTier == 0) // 低予算
+        {
+            songCost = 500000;    // 楽曲
+            costumeCost = 300000; // 衣装
+            choreoCost = 200000;  // 振付
+        }
+        else // 豪華
+        {
+            songCost = 2000000;
+            costumeCost = 2000000;
+            choreoCost = 1000000;
+        }
+
+        long totalCost = songCost + costumeCost + choreoCost;
+
+        if (financial.currentCash < totalCost)
         {
             report.AddLog("<color=red>[制作不可]</color> 資金不足");
             return;
         }
 
-        financial.currentCash -= cost;
-        financial.dailyCashChange -= cost;
+        financial.currentCash -= totalCost;
+        financial.dailyCashChange -= totalCost;
 
         int budgetBonus = budgetTier == 0 ? Random.Range(10, 30) : Random.Range(40, 80);
         float trendBonus = market.GetMarketMultiplier(groupData.genre);
         int quality = (int)((groupData.performance + budgetBonus) * trendBonus);
 
         Song newSong = new Song();
-        newSong.title = $"Single #{groupData.discography.Count + 1}";
+        newSong.title = songTitle;
         newSong.genre = groupData.genre;
         newSong.quality = quality;
         newSong.releaseDay = gameManager.currentDay;
         newSong.totalSales = 0;
         newSong.peakRank = 100;
+        newSong.hasMV = false;
 
         groupData.discography.Add(newSong);
-        report.AddLog($"<color=green>[新曲リリース]</color> 『{newSong.title}』 (Q:{quality}) 制作費 -{cost:N0}円");
+        report.AddLog($"<color=green>[新曲リリース]</color> 『{newSong.title}』(Q:{quality})");
+        report.AddLog($"[内訳] 楽曲:-{songCost:N0} 衣装:-{costumeCost:N0} 振付:-{choreoCost:N0}");
     }
 
     public void ProcessWeeklySales(DailyReport report)
@@ -221,8 +279,6 @@ public class IdolManager : MonoBehaviour
             report.AddLog($"<color=yellow>[印税収入]</color> +{totalRoyalties:N0}円");
         }
     }
-
-    // --- 予約・ライブシステム ---
 
     public List<Venue> GetVenueList()
     {
@@ -270,8 +326,8 @@ public class IdolManager : MonoBehaviour
         {
             if (!groupData.IsAvailable())
             {
-                report.AddLog($"<color=red>【公演中止】メンバー不在のためライブが中止になりました！</color>");
-                report.AddLog($"[損害] 違約金（会場費全額） -{booking.venue.baseCost:N0}円");
+                report.AddLog($"<color=red>【公演中止】メンバー不在！</color>");
+                report.AddLog($"[損害] 違約金 -{booking.venue.baseCost:N0}円");
                 financial.currentCash -= booking.venue.baseCost;
                 financial.dailyCashChange -= booking.venue.baseCost;
                 activeBookings.Remove(booking);
@@ -283,17 +339,13 @@ public class IdolManager : MonoBehaviour
         }
     }
 
-    // ★セットリストの自動生成（プレイヤーが指定しなかった場合用）
     public void AutoGenerateSetlist(VenueBooking booking)
     {
         if (groupData.discography.Count == 0) return;
-
-        // クオリティが高い順にソートし、会場の曲数制限までピックアップ
         var bestSongs = groupData.discography.OrderByDescending(s => s.quality).Take(booking.venue.maxSongs).ToList();
         booking.setlist = bestSongs;
     }
 
-    // ★手動でセットリストを設定するAPI（UIから呼ぶことを想定）
     public void RegisterSetlist(VenueBooking booking, List<Song> selectedSongs)
     {
         booking.setlist.Clear();
@@ -308,79 +360,76 @@ public class IdolManager : MonoBehaviour
     {
         report.AddLog($"<color=cyan>★LIVE開催！ {booking.venue.venueName}★</color>");
 
-        // セットリストが空なら自動生成
-        if (booking.setlist == null || booking.setlist.Count == 0)
-        {
-            AutoGenerateSetlist(booking);
-            if (booking.setlist.Count > 0) report.AddLog("<color=grey>(※セットリストお任せモードで実行)</color>");
-        }
+        if (booking.setlist == null || booking.setlist.Count == 0) AutoGenerateSetlist(booking);
 
+        // 会場費残金
         long remainingCost = (long)(booking.venue.baseCost * 0.7f);
         financial.currentCash -= remainingCost;
         financial.dailyCashChange -= remainingCost;
-        report.AddLog($"[支出] 会場費残金: -{remainingCost:N0}円");
 
-        // --- ★セットリスト評価ロジック ---
+        // ★追加：当日経費（交通費・宿泊費・音響照明スタッフ費）
+        // 規模が大きいほどスタッフが増え、移動も大変になる
+        long staffCost = booking.venue.capacity * 200; // 300人箱なら6万、ドームなら1000万
+        long travelCost = 50000 + (booking.venue.capacity * 50);
+
+        financial.currentCash -= (staffCost + travelCost);
+        financial.dailyCashChange -= (staffCost + travelCost);
+
+        report.AddLog($"[支出] 会場費残金:-{remainingCost:N0}");
+        report.AddLog($"[経費] 音響照明スタッフ:-{staffCost:N0} 交通宿泊費:-{travelCost:N0}");
+
+        // --- パフォーマンス計算 ---
         float totalSetlistPower = 0;
         int songCount = 0;
-        string setlistLog = "【セットリスト】\n";
 
-        if (booking.setlist.Count == 0)
-        {
-            report.AddLog("<color=red>持ち歌が0曲です！ トークだけで乗り切ります...</color>");
-            totalSetlistPower = groupData.performance * 0.1f; // ペナルティ
-        }
+        if (booking.setlist.Count == 0) totalSetlistPower = groupData.performance * 0.1f;
         else
         {
             foreach (var song in booking.setlist)
             {
                 songCount++;
                 float songScore = song.quality;
-
-                // ボーナス1: コンセプト一致 (1.2倍)
-                bool isConceptMatch = (song.genre == groupData.genre);
-                if (isConceptMatch) songScore *= 1.2f;
-
-                // ボーナス2: 新曲ボーナス（発売30日以内 1.5倍）
-                bool isNewSong = (gameManager.currentDay - song.releaseDay) <= 30;
-                if (isNewSong) songScore *= 1.5f;
-
+                if (song.genre == groupData.genre) songScore *= 1.2f;
+                if ((gameManager.currentDay - song.releaseDay) <= 30) songScore *= 1.5f;
                 totalSetlistPower += songScore;
-
-                string bonusText = "";
-                if (isNewSong) bonusText += "<color=orange>[新曲!]</color>";
-                if (isConceptMatch) bonusText += "<color=cyan>[一致]</color>";
-                setlistLog += $"M{songCount}. {song.title} (Q:{song.quality}) {bonusText} -> <color=green>+{songScore:N0}pt</color>\n";
             }
         }
-        report.AddLog(setlistLog);
 
-        // 平均パフォーマンス値を算出（曲数で割るが、曲数が多いほど合計パワーは有利になるバランス）
-        // 基準値: 曲の平均クオリティ + (合計パワー * 0.1)
         float basePerf = groupData.performance;
-        if (songCount > 0)
-        {
-            // セットリストの総合力が実力に加算される
-            basePerf += (totalSetlistPower / 5.0f);
-        }
-
+        if (songCount > 0) basePerf += (totalSetlistPower / 5.0f);
         float perfRate = basePerf / 20.0f;
 
-        // 疲労・メンタル補正
         if (groupData.fatigue > 70) perfRate *= 0.6f;
         if (groupData.mental < 40) perfRate *= 0.8f;
 
         float trendBonus = market.GetMarketMultiplier(groupData.genre);
         int baseAudience = (int)(groupData.fans * perfRate * trendBonus);
-
         int actualAudience = Mathf.Min(baseAudience, booking.venue.capacity);
+
+        // チケット売上
         int ticketPrice = 3000 + (booking.venue.capacity / 10);
-        long totalSales = (long)actualAudience * ticketPrice + ((long)actualAudience * 2000);
+        long ticketSales = (long)actualAudience * ticketPrice;
 
-        financial.RegisterTransaction($"ライブ売上({booking.venue.venueName})", totalSales, gameManager.currentDay, 60);
+        // ★追加：グッズ売上（来場者の30%が2000円分買うと仮定）
+        long goodsSales = 0;
+        if (groupData.goodsStock > 0)
+        {
+            int buyers = (int)(actualAudience * 0.3f);
+            int soldCount = Mathf.Min(buyers, groupData.goodsStock);
+            groupData.goodsStock -= soldCount;
+            goodsSales = soldCount * 2000; // 売値
+            report.AddLog($"[物販] グッズ売上 +{goodsSales:N0}円 ({soldCount}個販売)");
+        }
+        else
+        {
+            report.AddLog("<color=orange>[物販] グッズ在庫切れで機会損失...</color>");
+        }
 
-        report.AddLog($"[動員] {actualAudience}人 / キャパ{booking.venue.capacity}人");
-        report.AddLog($"[売上予約] +{totalSales:N0}円 (60日後入金)");
+        long totalRevenue = ticketSales + goodsSales;
+        financial.RegisterTransaction($"ライブ収益({booking.venue.venueName})", totalRevenue, gameManager.currentDay, 60);
+
+        report.AddLog($"[動員] {actualAudience}人 / キャパ{booking.venue.capacity}");
+        report.AddLog($"[売上予定] +{totalRevenue:N0}円 (60日後)");
 
         if (actualAudience >= booking.venue.capacity * 0.8f)
         {
@@ -395,7 +444,6 @@ public class IdolManager : MonoBehaviour
             report.AddLog($"[成果] 空席多数...メンバー消沈。");
         }
 
-        // 曲数が多いほど疲れる
         groupData.fatigue += 20 + (songCount * 5);
 
         if (booking.venue.venueName == "東京ドーム" && actualAudience > 50000)
@@ -411,37 +459,5 @@ public class IdolManager : MonoBehaviour
         {
             groupData.fatigue = Mathf.Max(0, groupData.fatigue - 2);
         }
-    }
-
-    // 引数に string songTitle を追加
-    public void ProduceSong(int budgetTier, DailyReport report, string songTitle)
-    {
-        long cost = budgetTier == 0 ? 1000000 : 5000000;
-        if (financial.currentCash < cost)
-        {
-            report.AddLog("<color=red>[制作不可]</color> 資金不足");
-            return;
-        }
-
-        financial.currentCash -= cost;
-        financial.dailyCashChange -= cost;
-
-        int budgetBonus = budgetTier == 0 ? Random.Range(10, 30) : Random.Range(40, 80);
-        float trendBonus = market.GetMarketMultiplier(groupData.genre);
-        int quality = (int)((groupData.performance + budgetBonus) * trendBonus);
-
-        Song newSong = new Song();
-
-        // ★変更: 引数で渡されたタイトルを使用
-        newSong.title = songTitle;
-
-        newSong.genre = groupData.genre;
-        newSong.quality = quality;
-        newSong.releaseDay = gameManager.currentDay;
-        newSong.totalSales = 0;
-        newSong.peakRank = 100;
-
-        groupData.discography.Add(newSong);
-        report.AddLog($"<color=green>[新曲リリース]</color> 『{newSong.title}』 (Q:{quality}) 制作費 -{cost:N0}円");
     }
 }

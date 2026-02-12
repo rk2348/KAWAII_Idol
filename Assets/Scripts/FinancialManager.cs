@@ -57,9 +57,10 @@ public class FinancialManager : MonoBehaviour
         pendingTransactions.RemoveAll(t => t.isProcessed);
     }
 
-    // 月末の利子支払い
-    public void PayMonthlyInterest(DailyReport report)
+    // 月末の支払い（利子・運営費）
+    public void PayMonthlyCosts(DailyReport report)
     {
+        // 借金利子
         if (currentDebt > 0 && interestRate > 0)
         {
             long interest = (long)(currentDebt * interestRate);
@@ -67,5 +68,11 @@ public class FinancialManager : MonoBehaviour
             dailyCashChange -= interest;
             report.AddLog($"<color=red>[利子] 借金返済利子: -{interest:N0}円</color>");
         }
+
+        // ★追加：運営維持費（公式サイト、サーバー、FC運営など）
+        long operationCost = 50000; // 基本5万円
+        currentCash -= operationCost;
+        dailyCashChange -= operationCost;
+        report.AddLog($"[固定費] 公式サイト・サーバー維持費: -{operationCost:N0}円");
     }
 }
