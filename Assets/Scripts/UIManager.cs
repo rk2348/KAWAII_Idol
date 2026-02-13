@@ -7,7 +7,8 @@ public class UIManager : MonoBehaviour
 {
     [Header("Panels")]
     public GameObject startPanel;
-    public SetupPanel setupPanel; // ★追加
+    public SetupPanel setupPanel;
+    public AuditionPanel auditionPanel; // ★追加：Inspectorで割り当ててください
     public GameObject mainPanel;
     public GameObject resultPanel;
     public GameObject gameOverPanel;
@@ -44,30 +45,39 @@ public class UIManager : MonoBehaviour
         gameManager = gm;
 
         if (songNamePanel != null) songNamePanel.Setup(gm);
-        if (setupPanel != null) setupPanel.Setup(gm); // ★追加
+        if (setupPanel != null) setupPanel.Setup(gm);
+        if (auditionPanel != null) auditionPanel.Setup(gm, gm.idol); // ★追加
     }
 
     public void ShowStartScreen()
     {
         startPanel.SetActive(true);
         if (setupPanel != null) setupPanel.gameObject.SetActive(false);
+        if (auditionPanel != null) auditionPanel.gameObject.SetActive(false); // ★追加
         mainPanel.SetActive(false);
         resultPanel.SetActive(false);
         gameOverPanel.SetActive(false);
         gameClearPanel.SetActive(false);
     }
 
-    // ★追加：セットアップ画面を表示
     public void ShowSetupScreen()
     {
         startPanel.SetActive(false);
         setupPanel.Open();
     }
 
+    // ★追加
+    public void ShowAuditionScreen(int memberCount)
+    {
+        setupPanel.gameObject.SetActive(false);
+        auditionPanel.Open(memberCount);
+    }
+
     public void ShowMainScreen()
     {
         startPanel.SetActive(false);
         if (setupPanel != null) setupPanel.gameObject.SetActive(false);
+        if (auditionPanel != null) auditionPanel.gameObject.SetActive(false);
         mainPanel.SetActive(true);
         resultPanel.SetActive(false);
         RefreshMainUI();
@@ -123,7 +133,6 @@ public class UIManager : MonoBehaviour
         var g = gameManager.idol.groupData;
         var m = gameManager.market;
 
-        // ★変更：グループ名とメンバー数を表示
         statusText.text = $"{g.groupName} ({g.memberCount}人)\nFans: {g.fans:N0}\nGenre: {g.genre}";
         trendText.text = $"Trend: {m.currentTrend} {(m.isIceAge ? "<color=cyan>(ICE AGE)</color>" : "")}";
 

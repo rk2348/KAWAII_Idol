@@ -12,6 +12,10 @@ public class IdolManager : MonoBehaviour
     private StaffManager staffManager;
     private GameManager gameManager;
 
+    // 名前データベース（簡易版）
+    private readonly string[] lastNames = { "佐藤", "鈴木", "高橋", "田中", "渡辺", "伊藤", "山本", "中村", "小林", "加藤", "星野", "天海", "如月", "渋谷", "本田" };
+    private readonly string[] firstNames = { "愛", "未来", "さくら", "美咲", "花音", "七海", "遥", "彩花", "結衣", "莉子", "美月", "凛", "陽菜", "美優", "桃子" };
+
     public void Initialize(FinancialManager fm, MarketManager mm, StaffManager sm, GameManager gm)
     {
         financial = fm;
@@ -19,14 +23,48 @@ public class IdolManager : MonoBehaviour
         staffManager = sm;
         gameManager = gm;
         groupData = new IdolGroup();
+        groupData.members.Clear(); // 初期化
         activeBookings.Clear();
     }
 
-    // ★追加：セットアップ時に呼ばれる
-    public void SetGroupInfo(string name, int members)
+    public void SetGroupName(string name)
     {
         groupData.groupName = name;
-        groupData.memberCount = members;
+    }
+
+    // ★追加：メンバー確定処理
+    public void SetGroupMembers(List<IdolMember> members)
+    {
+        groupData.members = members;
+
+        // メンバーの平均能力値をグループの初期値に反映
+        if (members.Count > 0)
+        {
+            groupData.performance = (int)members.Average(m => (m.vocal + m.dance + m.visual) / 3);
+        }
+    }
+
+    // ★追加：候補生生成
+    public List<IdolMember> GenerateCandidates(int count)
+    {
+        List<IdolMember> candidates = new List<IdolMember>();
+        for (int i = 0; i < count; i++)
+        {
+            IdolMember m = new IdolMember();
+            m.lastName = lastNames[Random.Range(0, lastNames.Length)];
+            m.firstName = firstNames[Random.Range(0, firstNames.Length)];
+            m.birthMonth = Random.Range(1, 13);
+            m.birthDay = Random.Range(1, 29); // 簡易的に28日まで
+            m.age = Random.Range(15, 23);
+
+            // 能力値ランダム (1-20)
+            m.vocal = Random.Range(1, 20);
+            m.dance = Random.Range(1, 20);
+            m.visual = Random.Range(1, 20);
+
+            candidates.Add(m);
+        }
+        return candidates;
     }
 
     public void CheckConditionEvents(DailyReport report)
@@ -102,7 +140,6 @@ public class IdolManager : MonoBehaviour
         financial.dailyCashChange -= cost;
 
         float bonus = staffManager.GetStaffBonus(StaffType.Marketer);
-        // 人数が多いと目立ちやすい（少しボーナス）
         float memberBonus = 1.0f + (groupData.memberCount * 0.05f);
 
         int fanIncrease = (int)(Random.Range(15, 30) * bonus * memberBonus);
@@ -115,7 +152,6 @@ public class IdolManager : MonoBehaviour
 
     public void DoRest(DailyReport report)
     {
-        // ★変更：人数分のケア代がかかる
         int costPerMember = 5000;
         long totalCost = costPerMember * groupData.memberCount;
 
@@ -161,7 +197,6 @@ public class IdolManager : MonoBehaviour
             return;
         }
 
-        // MVも人数が多いと映り込み調整などで少し高くなる想定
         long cost = 3000000 + (groupData.memberCount * 100000);
 
         if (financial.currentCash < cost)
@@ -182,7 +217,6 @@ public class IdolManager : MonoBehaviour
 
     public void ChangeConcept(IdolGenre newGenre, DailyReport report)
     {
-        // ★変更：人数分の衣装代がかかる
         long costPerMember = 300000;
         long totalCost = costPerMember * groupData.memberCount;
 
@@ -211,20 +245,19 @@ public class IdolManager : MonoBehaviour
     {
         long songCost, costumeUnitCost, choreoCost;
 
-        if (budgetTier == 0) // 低予算
+        if (budgetTier == 0)
         {
             songCost = 500000;
-            costumeUnitCost = 50000; // 1人あたり5万
+            costumeUnitCost = 50000;
             choreoCost = 200000;
         }
-        else // 豪華
+        else
         {
             songCost = 2000000;
-            costumeUnitCost = 200000; // 1人あたり20万
+            costumeUnitCost = 200000;
             choreoCost = 1000000;
         }
 
-        // ★変更：衣装代は人数分かかる
         long totalCostumeCost = costumeUnitCost * groupData.memberCount;
         long totalCost = songCost + totalCostumeCost + choreoCost;
 
@@ -378,13 +411,11 @@ public class IdolManager : MonoBehaviour
         financial.currentCash -= remainingCost;
         financial.dailyCashChange -= remainingCost;
 
-        // ★変更：交通費・宿泊費（人数依存）
         long staffCost = booking.venue.capacity * 200;
 
-        // 1人あたり移動費 + 車両費など
         long travelCostPerMember = 10000;
         long baseTravelCost = 30000;
-        if (booking.venue.capacity > 1000) { travelCostPerMember = 50000; baseTravelCost = 200000; } // 遠征
+        if (booking.venue.capacity > 1000) { travelCostPerMember = 50000; baseTravelCost = 200000; }
 
         long totalTravelCost = baseTravelCost + (travelCostPerMember * groupData.memberCount);
 
@@ -466,10 +497,8 @@ public class IdolManager : MonoBehaviour
         }
     }
 
-    // 月末のメンバー生活費支払い処理（FinancialManagerから呼ばれることを想定、あるいはGameManagerで呼ぶ）
     public long CalcMonthlyMemberCost()
     {
-        // 1人あたり月15万の最低生活費・寮費など
         return 150000 * groupData.memberCount;
     }
 

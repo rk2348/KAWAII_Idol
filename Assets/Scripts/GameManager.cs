@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Linq;
+using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
@@ -29,22 +30,26 @@ public class GameManager : MonoBehaviour
         uiManager.ShowStartScreen();
     }
 
-    // ★変更：ここからセットアップ画面へ遷移
     public void StartGame(int originIndex)
     {
         origin = (ProducerOrigin)originIndex;
-        // セットアップ画面を表示して、名前と人数を決めさせる
         uiManager.ShowSetupScreen();
     }
 
-    // ★追加：セットアップ画面で決定ボタンが押されたらここに来る
+    // セットアップ画面で人数が決まったらオーディション画面へ
     public void OnSetupConfirmed(string groupName, int memberCount)
     {
-        idol.SetGroupInfo(groupName, memberCount);
+        idol.SetGroupName(groupName);
+        uiManager.ShowAuditionScreen(memberCount);
+    }
+
+    // ★追加：オーディションでメンバーが確定したらゲーム開始
+    public void OnAuditionFinished(List<IdolMember> selectedMembers)
+    {
+        idol.SetGroupMembers(selectedMembers);
         StartGameLogic();
     }
 
-    // 実際のゲーム開始処理（旧StartGameの後半部分）
     private void StartGameLogic()
     {
         long startCash = 0;
@@ -69,7 +74,8 @@ public class GameManager : MonoBehaviour
         market.UpdateTrendRandomly(new DailyReport());
 
         // 初期費用（オーディション・宣材・ロゴ + 人数分の支度金）
-        long setupCost = 2000000 + (idol.groupData.memberCount * 100000);
+        // オーディション開催費として少し上乗せ
+        long setupCost = 2500000 + (idol.groupData.memberCount * 100000);
         financial.currentCash -= setupCost;
 
         Debug.Log($"初期費用（オーディション・人数分初期費）として {setupCost:N0}円 支払いました。");
@@ -130,7 +136,6 @@ public class GameManager : MonoBehaviour
             staff.PayMonthlySalaries(report);
             financial.PayMonthlyCosts(report);
 
-            // ★追加：メンバー生活費（人数分）
             long livingCost = idol.CalcMonthlyMemberCost();
             financial.currentCash -= livingCost;
             financial.dailyCashChange -= livingCost;

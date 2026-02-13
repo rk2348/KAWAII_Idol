@@ -11,11 +11,46 @@ public class Transaction
     public bool isProcessed;
 }
 
+// ★追加：アイドル個人のデータクラス
+[Serializable]
+public class IdolMember
+{
+    public string lastName;
+    public string firstName;
+    public int birthMonth;
+    public int birthDay;
+    public int age; // 年齢
+
+    // 個人の能力値（将来的な拡張のため）
+    public int visual;
+    public int vocal;
+    public int dance;
+
+    public string GetFullName()
+    {
+        return $"{lastName} {firstName}";
+    }
+
+    public string GetBirthdayString()
+    {
+        return $"{birthMonth}月{birthDay}日";
+    }
+}
+
 [Serializable]
 public class IdolGroup
 {
-    public string groupName = "Default Group"; // 初期値
-    public int memberCount = 1; // ★追加：メンバー人数
+    public string groupName = "Default Group";
+
+    // ★変更：メンバーリストで管理
+    public List<IdolMember> members = new List<IdolMember>();
+
+    // 旧コードとの互換性のため、プロパティで人数を返す
+    public int memberCount
+    {
+        get { return members.Count; }
+    }
+
     public int fans = 1000;
     public int performance = 10;
     public int mental = 100;
@@ -32,7 +67,7 @@ public class IdolGroup
 
     public bool IsAvailable()
     {
-        return hospitalDaysLeft <= 0 && runawayDaysLeft <= 0;
+        return hospitalDaysLeft <= 0 && runawayDaysLeft <= 0 && members.Count > 0;
     }
 }
 

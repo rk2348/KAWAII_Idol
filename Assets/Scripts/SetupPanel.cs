@@ -33,7 +33,7 @@ public class SetupPanel : MonoBehaviour
     public void UpdateMemberCountText(float value)
     {
         selectedMemberCount = (int)value;
-        memberCountText.text = $"メンバー数: {selectedMemberCount}人";
+        memberCountText.text = $"募集人数: {selectedMemberCount}人";
     }
 
     // 決定ボタン
@@ -42,7 +42,9 @@ public class SetupPanel : MonoBehaviour
         string groupName = nameInputField.text;
         if (string.IsNullOrEmpty(groupName)) groupName = "名無しアイドル";
 
+        // ここからオーディションへ遷移するようにGameManagerが処理を変更済み
         gameManager.OnSetupConfirmed(groupName, selectedMemberCount);
-        this.gameObject.SetActive(false);
+        // パネルを閉じる処理はUIManager側で行うので、ここではSetActive(false)を即座に呼ばない方が安全だが、
+        // ちらつき防止で呼んでもよい。今回はUIManager.ShowAuditionScreenで制御する。
     }
 }
