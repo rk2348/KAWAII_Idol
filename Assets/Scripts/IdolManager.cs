@@ -38,18 +38,15 @@ public class IdolManager : MonoBehaviour
         if (members.Count > 0)
         {
             groupData.performance = (int)members.Average(m => (m.vocal + m.dance + m.visual) / 3);
-            // ★追加：メンバー決定時に相性（ケミストリー）を計算
             CalculateGroupChemistry();
         }
     }
 
-    // ★追加：ケミストリー計算
-    // 全メンバーの組み合わせの相性値を合計し、平均を取る
     private void CalculateGroupChemistry()
     {
         if (groupData.members.Count <= 1)
         {
-            groupData.chemistry = 10; // 1人なら平和
+            groupData.chemistry = 10;
             return;
         }
 
@@ -69,20 +66,9 @@ public class IdolManager : MonoBehaviour
         Debug.Log($"Group Chemistry: {groupData.chemistry}");
     }
 
-    // ★追加：性格相性マトリクス
-    // 正の値なら相性が良い、負なら悪い
     private int GetCompatibilityScore(IdolPersonality p1, IdolPersonality p2)
     {
-        // 同じ性格同士は基本わかりあえる(+5)
         if (p1 == p2) return 5;
-
-        // 特定の組み合わせ
-        // 元気(Energetic) <-> クール(Cool): 凸凹コンビで良い (+10)
-        // 元気(Energetic) <-> 真面目(Serious): うるさいと思われる (-10)
-        // 真面目(Serious) <-> 怠惰(Lazy): 許せない (-20)
-        // 真面目(Serious) <-> 天使(Angel): 癒やされる (+10)
-        // クール(Cool) <-> 天使(Angel): 調子が狂う (-5)
-        // 怠惰(Lazy) <-> 元気(Energetic): 引っ張ってもらえる (+5)
 
         if (CheckPair(p1, p2, IdolPersonality.Energetic, IdolPersonality.Cool)) return 10;
         if (CheckPair(p1, p2, IdolPersonality.Energetic, IdolPersonality.Serious)) return -10;
@@ -91,7 +77,7 @@ public class IdolManager : MonoBehaviour
         if (CheckPair(p1, p2, IdolPersonality.Cool, IdolPersonality.Angel)) return -5;
         if (CheckPair(p1, p2, IdolPersonality.Lazy, IdolPersonality.Energetic)) return 5;
 
-        return 0; // その他の組み合わせは普通
+        return 0;
     }
 
     private bool CheckPair(IdolPersonality p1, IdolPersonality p2, IdolPersonality targetA, IdolPersonality targetB)
@@ -115,7 +101,6 @@ public class IdolManager : MonoBehaviour
             m.dance = Random.Range(1, 20);
             m.visual = Random.Range(1, 20);
 
-            // ★追加：性格をランダム設定
             m.personality = (IdolPersonality)Random.Range(0, System.Enum.GetValues(typeof(IdolPersonality)).Length);
 
             candidates.Add(m);
@@ -177,11 +162,8 @@ public class IdolManager : MonoBehaviour
         float bonus = staffManager.GetStaffBonus(StaffType.Trainer);
         float fatiguePenalty = (groupData.fatigue > 50) ? 0.5f : 1.0f;
 
-        // ★追加：ケミストリーボーナス
-        // ケミストリーが高いほど、相乗効果で成長しやすい
-        // 例: ケミストリー10なら1.1倍、-20なら0.8倍
         float chemistryMultiplier = 1.0f + (groupData.chemistry * 0.01f);
-        chemistryMultiplier = Mathf.Max(0.5f, chemistryMultiplier); // 下限あり
+        chemistryMultiplier = Mathf.Max(0.5f, chemistryMultiplier);
 
         int baseGrowth = Random.Range(1, 4);
         int growth = (int)(baseGrowth * bonus * fatiguePenalty * chemistryMultiplier);
@@ -219,6 +201,7 @@ public class IdolManager : MonoBehaviour
         report.AddLog($"[広告] ファン+{fanIncrease}人 / SNS・Web広告費 -{cost:N0}円");
     }
 
+    // ★修正: マネージャーボーナスを適用
     public void DoRest(DailyReport report)
     {
         int costPerMember = 5000;
@@ -227,9 +210,16 @@ public class IdolManager : MonoBehaviour
         financial.currentCash -= totalCost;
         financial.dailyCashChange -= totalCost;
 
+        // マネージャーの効果を取得（Lvに応じて回復量アップ）
+        float managerBonus = staffManager.GetStaffBonus(StaffType.Manager);
+        int baseRecovery = 30;
+        int actualRecovery = (int)(baseRecovery * managerBonus);
+
         groupData.fatigue = 0;
-        groupData.mental = Mathf.Min(100, groupData.mental + 30);
-        report.AddLog($"[休暇] 全員リフレッシュ / ケア費({groupData.memberCount}人分) -{totalCost:N0}円");
+        groupData.mental = Mathf.Min(100, groupData.mental + actualRecovery);
+
+        string managerLog = managerBonus > 1.0f ? $"<color=green>(Mg効果+{actualRecovery - baseRecovery})</color>" : "";
+        report.AddLog($"[休暇] 全員リフレッシュ メンタル回復+{actualRecovery} {managerLog} / ケア費 -{totalCost:N0}円");
     }
 
     public void ProduceGoods(DailyReport report)
@@ -575,8 +565,6 @@ public class IdolManager : MonoBehaviour
     {
         if (groupData.IsAvailable())
         {
-            // ★追加：ケミストリーによる日々の変動
-            // 仲が良いと毎日メンタル微回復、悪いと微減
             if (groupData.chemistry > 0)
             {
                 groupData.mental = Mathf.Min(100, groupData.mental + 1);

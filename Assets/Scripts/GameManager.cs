@@ -43,7 +43,7 @@ public class GameManager : MonoBehaviour
         uiManager.ShowAuditionScreen(memberCount);
     }
 
-    // ★追加：オーディションでメンバーが確定したらゲーム開始
+    // オーディションでメンバーが確定したらゲーム開始
     public void OnAuditionFinished(List<IdolMember> selectedMembers)
     {
         idol.SetGroupMembers(selectedMembers);
@@ -177,19 +177,34 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
+    // --- UI Button Handlers ---
     public void OnClickLesson() { ExecuteAction("Lesson"); }
     public void OnClickPromo() { ExecuteAction("Promo"); }
     public void OnClickRest() { ExecuteAction("Rest"); }
     public void OnClickNext() { ExecuteAction("Next"); }
+
+    // 会場予約 (0:LiveHouse, 1:Zepp, 2:Budokan, 3:TokyoDome)
+    public void OnClickBookLiveHouse() { ExecuteAction("BookVenue", 0); } // ★追加
     public void OnClickBookZepp() { ExecuteAction("BookVenue", 1); }
+    public void OnClickBookBudokan() { ExecuteAction("BookVenue", 2); } // ★追加
     public void OnClickBookDome() { ExecuteAction("BookVenue", 3); }
+
+    // スタッフ雇用 (0:Trainer, 1:Marketer, 2:Manager)
     public void OnClickHireTrainer() { ExecuteAction("Hire", 0); }
     public void OnClickHireMarketer() { ExecuteAction("Hire", 1); }
+    public void OnClickHireManager() { ExecuteAction("Hire", 2); } // ★追加
+
+    // コンセプト変更 (0:Kawaii, 1:Cool, 2:Rock, 3:Traditional)
     public void OnClickChangeGenreToKawaii() { ExecuteAction("ChangeConcept", 0); }
     public void OnClickChangeGenreToCool() { ExecuteAction("ChangeConcept", 1); }
     public void OnClickChangeGenreToRock() { ExecuteAction("ChangeConcept", 2); }
+    public void OnClickChangeGenreToTraditional() { ExecuteAction("ChangeConcept", 3); } // ★追加
+
+    // 楽曲制作
     public void OnClickProduceSongLow() { int nextNum = idol.groupData.discography.Count + 1; uiManager.ShowSongProductionPanel(0, nextNum); }
     public void OnClickProduceSongHigh() { int nextNum = idol.groupData.discography.Count + 1; uiManager.ShowSongProductionPanel(1, nextNum); }
+
+    // その他
     public void OnClickSetlist() { uiManager.ShowSetlistScreen(); }
     public void OnClickProduceGoods() { ExecuteAction("ProduceGoods"); }
     public void OnClickMakeMV() { ExecuteAction("MakeMV"); }
