@@ -52,10 +52,10 @@ public class AuditionPanel : MonoBehaviour
 
             bool isSelected = selectedMembers.Contains(candidate);
 
-            // 表示テキスト
+            // ★追加：性格の表示を追加
             string checkMark = isSelected ? "<color=yellow>★採用</color>" : "　";
             txt.text = $"{checkMark} <b>{candidate.GetFullName()}</b> ({candidate.age}歳)\n" +
-                       $"誕生日: {candidate.GetBirthdayString()} / Vo:{candidate.vocal} Da:{candidate.dance} Vi:{candidate.visual}";
+                       $"性:{candidate.GetPersonalityName()} / Vo:{candidate.vocal} Da:{candidate.dance} Vi:{candidate.visual}";
 
             // 色変更
             ColorBlock cb = btn.colors;

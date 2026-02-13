@@ -11,7 +11,16 @@ public class Transaction
     public bool isProcessed;
 }
 
-// ★追加：アイドル個人のデータクラス
+// ★追加：性格の定義
+public enum IdolPersonality
+{
+    Energetic, // 元気：ムードメーカー
+    Serious,   // 真面目：練習熱心だが融通が効かない
+    Cool,      // クール：冷静だが付き合いが悪い
+    Lazy,      // 怠惰：才能はあるがサボり魔
+    Angel      // 天使：誰とでも仲良くできるがストレスを溜めやすい
+}
+
 [Serializable]
 public class IdolMember
 {
@@ -19,12 +28,15 @@ public class IdolMember
     public string firstName;
     public int birthMonth;
     public int birthDay;
-    public int age; // 年齢
+    public int age;
 
-    // 個人の能力値（将来的な拡張のため）
+    // 能力値
     public int visual;
     public int vocal;
     public int dance;
+
+    // ★追加：性格
+    public IdolPersonality personality;
 
     public string GetFullName()
     {
@@ -35,17 +47,28 @@ public class IdolMember
     {
         return $"{birthMonth}月{birthDay}日";
     }
+
+    // ★追加：性格名の日本語取得
+    public string GetPersonalityName()
+    {
+        switch (personality)
+        {
+            case IdolPersonality.Energetic: return "元気";
+            case IdolPersonality.Serious: return "真面目";
+            case IdolPersonality.Cool: return "クール";
+            case IdolPersonality.Lazy: return "怠惰";
+            case IdolPersonality.Angel: return "天使";
+            default: return "";
+        }
+    }
 }
 
 [Serializable]
 public class IdolGroup
 {
     public string groupName = "Default Group";
-
-    // ★変更：メンバーリストで管理
     public List<IdolMember> members = new List<IdolMember>();
 
-    // 旧コードとの互換性のため、プロパティで人数を返す
     public int memberCount
     {
         get { return members.Count; }
@@ -57,6 +80,9 @@ public class IdolGroup
     public int fatigue = 0;
     public IdolGenre genre = IdolGenre.KAWAII;
     public bool hasDoneDome = false;
+
+    // ★追加：グループの人間関係（ケミストリー）値 (-100 ? 100)
+    public int chemistry = 0;
 
     public int goodsStock = 0;
 

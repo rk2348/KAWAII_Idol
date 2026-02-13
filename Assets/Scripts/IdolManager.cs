@@ -12,7 +12,6 @@ public class IdolManager : MonoBehaviour
     private StaffManager staffManager;
     private GameManager gameManager;
 
-    // 名前データベース（簡易版）
     private readonly string[] lastNames = { "佐藤", "鈴木", "高橋", "田中", "渡辺", "伊藤", "山本", "中村", "小林", "加藤", "星野", "天海", "如月", "渋谷", "本田" };
     private readonly string[] firstNames = { "愛", "未来", "さくら", "美咲", "花音", "七海", "遥", "彩花", "結衣", "莉子", "美月", "凛", "陽菜", "美優", "桃子" };
 
@@ -23,7 +22,7 @@ public class IdolManager : MonoBehaviour
         staffManager = sm;
         gameManager = gm;
         groupData = new IdolGroup();
-        groupData.members.Clear(); // 初期化
+        groupData.members.Clear();
         activeBookings.Clear();
     }
 
@@ -32,19 +31,74 @@ public class IdolManager : MonoBehaviour
         groupData.groupName = name;
     }
 
-    // ★追加：メンバー確定処理
     public void SetGroupMembers(List<IdolMember> members)
     {
         groupData.members = members;
 
-        // メンバーの平均能力値をグループの初期値に反映
         if (members.Count > 0)
         {
             groupData.performance = (int)members.Average(m => (m.vocal + m.dance + m.visual) / 3);
+            // ★追加：メンバー決定時に相性（ケミストリー）を計算
+            CalculateGroupChemistry();
         }
     }
 
-    // ★追加：候補生生成
+    // ★追加：ケミストリー計算
+    // 全メンバーの組み合わせの相性値を合計し、平均を取る
+    private void CalculateGroupChemistry()
+    {
+        if (groupData.members.Count <= 1)
+        {
+            groupData.chemistry = 10; // 1人なら平和
+            return;
+        }
+
+        int totalScore = 0;
+        int pairCount = 0;
+
+        for (int i = 0; i < groupData.members.Count; i++)
+        {
+            for (int j = i + 1; j < groupData.members.Count; j++)
+            {
+                totalScore += GetCompatibilityScore(groupData.members[i].personality, groupData.members[j].personality);
+                pairCount++;
+            }
+        }
+
+        groupData.chemistry = totalScore / pairCount;
+        Debug.Log($"Group Chemistry: {groupData.chemistry}");
+    }
+
+    // ★追加：性格相性マトリクス
+    // 正の値なら相性が良い、負なら悪い
+    private int GetCompatibilityScore(IdolPersonality p1, IdolPersonality p2)
+    {
+        // 同じ性格同士は基本わかりあえる(+5)
+        if (p1 == p2) return 5;
+
+        // 特定の組み合わせ
+        // 元気(Energetic) <-> クール(Cool): 凸凹コンビで良い (+10)
+        // 元気(Energetic) <-> 真面目(Serious): うるさいと思われる (-10)
+        // 真面目(Serious) <-> 怠惰(Lazy): 許せない (-20)
+        // 真面目(Serious) <-> 天使(Angel): 癒やされる (+10)
+        // クール(Cool) <-> 天使(Angel): 調子が狂う (-5)
+        // 怠惰(Lazy) <-> 元気(Energetic): 引っ張ってもらえる (+5)
+
+        if (CheckPair(p1, p2, IdolPersonality.Energetic, IdolPersonality.Cool)) return 10;
+        if (CheckPair(p1, p2, IdolPersonality.Energetic, IdolPersonality.Serious)) return -10;
+        if (CheckPair(p1, p2, IdolPersonality.Serious, IdolPersonality.Lazy)) return -20;
+        if (CheckPair(p1, p2, IdolPersonality.Serious, IdolPersonality.Angel)) return 10;
+        if (CheckPair(p1, p2, IdolPersonality.Cool, IdolPersonality.Angel)) return -5;
+        if (CheckPair(p1, p2, IdolPersonality.Lazy, IdolPersonality.Energetic)) return 5;
+
+        return 0; // その他の組み合わせは普通
+    }
+
+    private bool CheckPair(IdolPersonality p1, IdolPersonality p2, IdolPersonality targetA, IdolPersonality targetB)
+    {
+        return (p1 == targetA && p2 == targetB) || (p1 == targetB && p2 == targetA);
+    }
+
     public List<IdolMember> GenerateCandidates(int count)
     {
         List<IdolMember> candidates = new List<IdolMember>();
@@ -54,13 +108,15 @@ public class IdolManager : MonoBehaviour
             m.lastName = lastNames[Random.Range(0, lastNames.Length)];
             m.firstName = firstNames[Random.Range(0, firstNames.Length)];
             m.birthMonth = Random.Range(1, 13);
-            m.birthDay = Random.Range(1, 29); // 簡易的に28日まで
+            m.birthDay = Random.Range(1, 29);
             m.age = Random.Range(15, 23);
 
-            // 能力値ランダム (1-20)
             m.vocal = Random.Range(1, 20);
             m.dance = Random.Range(1, 20);
             m.visual = Random.Range(1, 20);
+
+            // ★追加：性格をランダム設定
+            m.personality = (IdolPersonality)Random.Range(0, System.Enum.GetValues(typeof(IdolPersonality)).Length);
 
             candidates.Add(m);
         }
@@ -120,11 +176,24 @@ public class IdolManager : MonoBehaviour
 
         float bonus = staffManager.GetStaffBonus(StaffType.Trainer);
         float fatiguePenalty = (groupData.fatigue > 50) ? 0.5f : 1.0f;
-        int growth = (int)(Random.Range(1, 4) * bonus * fatiguePenalty);
+
+        // ★追加：ケミストリーボーナス
+        // ケミストリーが高いほど、相乗効果で成長しやすい
+        // 例: ケミストリー10なら1.1倍、-20なら0.8倍
+        float chemistryMultiplier = 1.0f + (groupData.chemistry * 0.01f);
+        chemistryMultiplier = Mathf.Max(0.5f, chemistryMultiplier); // 下限あり
+
+        int baseGrowth = Random.Range(1, 4);
+        int growth = (int)(baseGrowth * bonus * fatiguePenalty * chemistryMultiplier);
+
         groupData.performance += growth;
         groupData.fatigue += 15;
 
-        report.AddLog($"[レッスン] 実力+{growth} / スタジオ・講師代 -{cost:N0}円");
+        string chemLog = "";
+        if (groupData.chemistry > 5) chemLog = "<color=orange>(相性良)</color>";
+        if (groupData.chemistry < -5) chemLog = "<color=blue>(不仲...)</color>";
+
+        report.AddLog($"[レッスン] 実力+{growth} {chemLog} / 費用 -{cost:N0}円");
     }
 
     public void DoPromotion(DailyReport report)
@@ -506,6 +575,17 @@ public class IdolManager : MonoBehaviour
     {
         if (groupData.IsAvailable())
         {
+            // ★追加：ケミストリーによる日々の変動
+            // 仲が良いと毎日メンタル微回復、悪いと微減
+            if (groupData.chemistry > 0)
+            {
+                groupData.mental = Mathf.Min(100, groupData.mental + 1);
+            }
+            else if (groupData.chemistry < -10)
+            {
+                groupData.mental = Mathf.Max(0, groupData.mental - 1);
+            }
+
             groupData.fatigue = Mathf.Max(0, groupData.fatigue - 2);
         }
     }
