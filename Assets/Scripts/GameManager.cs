@@ -113,6 +113,7 @@ public class GameManager : MonoBehaviour
                 case "ProduceSong": idol.ProduceSong(param, report, pendingSongTitle); break;
                 case "ProduceGoods": idol.ProduceGoods(report); break;
                 case "MakeMV": idol.MakeMV(report); break;
+                case "Cheki": idol.DoChekiEvent(report); break; // ★追加：特典会
                 case "Next": report.AddLog("何もしなかった。"); break;
             }
         }
@@ -184,21 +185,21 @@ public class GameManager : MonoBehaviour
     public void OnClickNext() { ExecuteAction("Next"); }
 
     // 会場予約 (0:LiveHouse, 1:Zepp, 2:Budokan, 3:TokyoDome)
-    public void OnClickBookLiveHouse() { ExecuteAction("BookVenue", 0); } // ★追加
+    public void OnClickBookLiveHouse() { ExecuteAction("BookVenue", 0); }
     public void OnClickBookZepp() { ExecuteAction("BookVenue", 1); }
-    public void OnClickBookBudokan() { ExecuteAction("BookVenue", 2); } // ★追加
+    public void OnClickBookBudokan() { ExecuteAction("BookVenue", 2); }
     public void OnClickBookDome() { ExecuteAction("BookVenue", 3); }
 
     // スタッフ雇用 (0:Trainer, 1:Marketer, 2:Manager)
     public void OnClickHireTrainer() { ExecuteAction("Hire", 0); }
     public void OnClickHireMarketer() { ExecuteAction("Hire", 1); }
-    public void OnClickHireManager() { ExecuteAction("Hire", 2); } // ★追加
+    public void OnClickHireManager() { ExecuteAction("Hire", 2); }
 
     // コンセプト変更 (0:Kawaii, 1:Cool, 2:Rock, 3:Traditional)
     public void OnClickChangeGenreToKawaii() { ExecuteAction("ChangeConcept", 0); }
     public void OnClickChangeGenreToCool() { ExecuteAction("ChangeConcept", 1); }
     public void OnClickChangeGenreToRock() { ExecuteAction("ChangeConcept", 2); }
-    public void OnClickChangeGenreToTraditional() { ExecuteAction("ChangeConcept", 3); } // ★追加
+    public void OnClickChangeGenreToTraditional() { ExecuteAction("ChangeConcept", 3); }
 
     // 楽曲制作
     public void OnClickProduceSongLow() { int nextNum = idol.groupData.discography.Count + 1; uiManager.ShowSongProductionPanel(0, nextNum); }
@@ -208,4 +209,7 @@ public class GameManager : MonoBehaviour
     public void OnClickSetlist() { uiManager.ShowSetlistScreen(); }
     public void OnClickProduceGoods() { ExecuteAction("ProduceGoods"); }
     public void OnClickMakeMV() { ExecuteAction("MakeMV"); }
+
+    // ★追加：特典会
+    public void OnClickCheki() { ExecuteAction("Cheki"); }
 }

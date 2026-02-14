@@ -201,7 +201,6 @@ public class IdolManager : MonoBehaviour
         report.AddLog($"[広告] ファン+{fanIncrease}人 / SNS・Web広告費 -{cost:N0}円");
     }
 
-    // ★修正: マネージャーボーナスを適用
     public void DoRest(DailyReport report)
     {
         int costPerMember = 5000;
@@ -210,7 +209,6 @@ public class IdolManager : MonoBehaviour
         financial.currentCash -= totalCost;
         financial.dailyCashChange -= totalCost;
 
-        // マネージャーの効果を取得（Lvに応じて回復量アップ）
         float managerBonus = staffManager.GetStaffBonus(StaffType.Manager);
         int baseRecovery = 30;
         int actualRecovery = (int)(baseRecovery * managerBonus);
@@ -220,6 +218,81 @@ public class IdolManager : MonoBehaviour
 
         string managerLog = managerBonus > 1.0f ? $"<color=green>(Mg効果+{actualRecovery - baseRecovery})</color>" : "";
         report.AddLog($"[休暇] 全員リフレッシュ メンタル回復+{actualRecovery} {managerLog} / ケア費 -{totalCost:N0}円");
+    }
+
+    // ★追加：特典会ロジック
+    public void DoChekiEvent(DailyReport report)
+    {
+        int setupCost = 100000; // 簡易な会場設営や警備費
+        if (financial.currentCash < setupCost)
+        {
+            report.AddLog("<color=red>資金不足で特典会の会場が手配できません。</color>");
+            return;
+        }
+
+        financial.currentCash -= setupCost;
+        financial.dailyCashChange -= setupCost;
+
+        float totalSatisfaction = 0f;
+        int totalMentalDamage = 0;
+        int totalFatigueDamage = 0;
+        bool hasSaltResponse = false;
+
+        // メンバーそれぞれの性格に基づく影響を加算
+        foreach (var member in groupData.members)
+        {
+            switch (member.personality)
+            {
+                case IdolPersonality.Energetic: // 元気：満足度少しUP、メンタル消費普通、疲労普通
+                    totalSatisfaction += 1.1f; totalMentalDamage += 10; totalFatigueDamage += 15; break;
+                case IdolPersonality.Serious:   // 真面目：満足度標準、メンタル消費やや大、疲労少なめ
+                    totalSatisfaction += 1.0f; totalMentalDamage += 15; totalFatigueDamage += 10; break;
+                case IdolPersonality.Cool:      // クール：満足度やや下がるが、メンタルも疲労も削られにくい
+                    totalSatisfaction += 0.8f; totalMentalDamage += 5; totalFatigueDamage += 5; break;
+                case IdolPersonality.Lazy:      // 怠惰：満足度低い。20%の確率で塩対応による炎上発生
+                    totalSatisfaction += 0.7f; totalMentalDamage += 10; totalFatigueDamage += 10;
+                    if (Random.Range(0, 100) < 20) hasSaltResponse = true;
+                    break;
+                case IdolPersonality.Angel:     // 天使：満足度大幅UP（神対応）だが、メンタル激減り
+                    totalSatisfaction += 1.3f; totalMentalDamage += 25; totalFatigueDamage += 20; break;
+            }
+        }
+
+        // グループ全体の平均値をとる
+        float avgSatisfaction = totalSatisfaction / groupData.memberCount;
+        int avgMentalDmg = totalMentalDamage / groupData.memberCount;
+        int avgFatigueDmg = totalFatigueDamage / groupData.memberCount;
+
+        // 特典会参加人数は現在のファンの3%?8%程度
+        float participateRate = Random.Range(0.03f, 0.08f);
+        int participants = (int)(groupData.fans * participateRate);
+        if (participants < 10) participants = 10; // 最低保証
+
+        // チェキ単価2000円 × 参加者 × 満足度による売上補正
+        long sales = (long)(participants * 2000 * avgSatisfaction);
+
+        financial.currentCash += sales;
+        financial.dailyCashChange += sales;
+
+        groupData.mental -= avgMentalDmg;
+        groupData.fatigue += avgFatigueDmg;
+
+        report.AddLog($"[特典会] チェキ会開催！ {participants}人参加 / 設営費 -{setupCost:N0}円");
+        report.AddLog($"<color=yellow>収益 +{sales:N0}円</color> (疲労+{avgFatigueDmg} / メンタル-{avgMentalDmg})");
+
+        // イベント結果の判定
+        if (hasSaltResponse)
+        {
+            int lostFans = (int)(groupData.fans * 0.05f); // 5%のファン離れ
+            groupData.fans -= lostFans;
+            report.AddLog($"<color=red>【炎上】一部メンバーの「塩対応」がSNSで拡散... ファン-{lostFans}人</color>");
+        }
+        else if (avgSatisfaction >= 1.15f)
+        {
+            int newFans = (int)(participants * 0.2f); // 神対応が評判を呼び新規獲得
+            groupData.fans += newFans;
+            report.AddLog($"<color=green>【神対応】手厚い対応が話題になり、新規ファン獲得！ +{newFans}人</color>");
+        }
     }
 
     public void ProduceGoods(DailyReport report)
