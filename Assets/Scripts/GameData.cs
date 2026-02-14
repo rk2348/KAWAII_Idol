@@ -11,14 +11,13 @@ public class Transaction
     public bool isProcessed;
 }
 
-// ★追加：性格の定義
 public enum IdolPersonality
 {
-    Energetic, // 元気：ムードメーカー
-    Serious,   // 真面目：練習熱心だが融通が効かない
-    Cool,      // クール：冷静だが付き合いが悪い
-    Lazy,      // 怠惰：才能はあるがサボり魔
-    Angel      // 天使：誰とでも仲良くできるがストレスを溜めやすい
+    Energetic, // 元気：ムードメーカー。SNS適性◎
+    Serious,   // 真面目：練習熱心。SNSは苦手△
+    Cool,      // クール：冷静。SNSは普通○
+    Lazy,      // 怠惰：サボり魔。SNSはムラがある（大バズりか不発）
+    Angel      // 天使：愛想が良い。SNS適性○
 }
 
 [Serializable]
@@ -30,12 +29,10 @@ public class IdolMember
     public int birthDay;
     public int age;
 
-    // 能力値
     public int visual;
     public int vocal;
     public int dance;
 
-    // ★追加：性格
     public IdolPersonality personality;
 
     public string GetFullName()
@@ -48,7 +45,6 @@ public class IdolMember
         return $"{birthMonth}月{birthDay}日";
     }
 
-    // ★追加：性格名の日本語取得
     public string GetPersonalityName()
     {
         switch (personality)
@@ -81,7 +77,6 @@ public class IdolGroup
     public IdolGenre genre = IdolGenre.KAWAII;
     public bool hasDoneDome = false;
 
-    // ★追加：グループの人間関係（ケミストリー）値 (-100 ? 100)
     public int chemistry = 0;
 
     public int goodsStock = 0;
@@ -159,6 +154,10 @@ public class Song
     public long totalSales;
     public int peakRank;
     public bool hasMV = false;
+
+    // ★追加：SNS適性（0-100）
+    // バズりやすさ、UGC（踊ってみた動画）の生まれやすさを表す
+    public int snsAppeal;
 
     public float GetCurrentMomentum(int currentDay)
     {

@@ -113,7 +113,8 @@ public class GameManager : MonoBehaviour
                 case "ProduceSong": idol.ProduceSong(param, report, pendingSongTitle); break;
                 case "ProduceGoods": idol.ProduceGoods(report); break;
                 case "MakeMV": idol.MakeMV(report); break;
-                case "Cheki": idol.DoChekiEvent(report); break; // ★追加：特典会
+                case "Cheki": idol.DoChekiEvent(report); break; // 特典会
+                case "SNSPromo": idol.DoSNSPromotion(report); break; // ★追加：SNS投稿
                 case "Next": report.AddLog("何もしなかった。"); break;
             }
         }
@@ -210,6 +211,9 @@ public class GameManager : MonoBehaviour
     public void OnClickProduceGoods() { ExecuteAction("ProduceGoods"); }
     public void OnClickMakeMV() { ExecuteAction("MakeMV"); }
 
-    // ★追加：特典会
+    // 特典会
     public void OnClickCheki() { ExecuteAction("Cheki"); }
+
+    // ★追加: SNSプロモーション
+    public void OnClickSNSPromo() { ExecuteAction("SNSPromo"); }
 }
