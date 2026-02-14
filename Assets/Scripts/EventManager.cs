@@ -25,8 +25,12 @@ public class EventManager : MonoBehaviour
         switch (type)
         {
             case 0:
+                // ★変更: 炎上時はライト層が大幅に減り、コア層は少し耐える
                 report.AddLog("<color=red>【炎上】</color> SNSで失言！ファン減少...");
-                idolManager.groupData.fans = (int)(idolManager.groupData.fans * 0.9f);
+                int lostLight = (int)(idolManager.groupData.fansLight * 0.2f); // 20%
+                int lostCore = (int)(idolManager.groupData.fansCore * 0.05f);  // 5%
+                idolManager.groupData.fansLight -= lostLight;
+                idolManager.groupData.fansCore -= lostCore;
                 idolManager.groupData.mental -= 20;
                 break;
             case 1:
@@ -43,8 +47,14 @@ public class EventManager : MonoBehaviour
 
     void TriggerGoodEvent(DailyReport report)
     {
+        // ★変更: バズりはライト層急増＋厄介発生
         report.AddLog("<color=yellow>【バズり】</color> 動画が大ヒット！ファン急増！");
-        idolManager.groupData.fans = (int)(idolManager.groupData.fans * 1.3f);
+        int newLight = (int)(idolManager.groupData.fans * 0.3f);
+        int newYakkai = Random.Range(1, 10);
+
+        idolManager.groupData.fansLight += newLight;
+        idolManager.groupData.fansYakkai += newYakkai;
+
         idolManager.groupData.mental += 10;
     }
 }

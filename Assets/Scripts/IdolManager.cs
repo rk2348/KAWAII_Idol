@@ -128,8 +128,11 @@ public class IdolManager : MonoBehaviour
             financial.currentCash -= searchCost;
             financial.dailyCashChange -= searchCost;
             groupData.mental = 30;
-            int lostFans = (int)(groupData.fans * 0.3f);
-            groupData.fans -= lostFans;
+
+            // ★変更: 失踪時に離れるのは主にライト層
+            int lostFans = (int)(groupData.fansLight * 0.3f);
+            groupData.fansLight -= lostFans;
+
             report.AddLog($"<color=red>【失踪】メンバー音信不通。捜索費 -{searchCost:N0}円</color>");
             return;
         }
@@ -144,6 +147,41 @@ public class IdolManager : MonoBehaviour
         {
             groupData.runawayDaysLeft--;
             report.AddLog($"<color=grey>[捜索中] 発見まであと {groupData.runawayDaysLeft + 1}日...</color>");
+        }
+
+        // ★追加: 厄介ファントラブルのチェック
+        CheckYakkaiTrouble(report);
+    }
+
+    private void CheckYakkaiTrouble(DailyReport report)
+    {
+        if (groupData.fansYakkai <= 0) return;
+
+        // 厄介ファンの数に応じて発生確率上昇 (最大5%)
+        float troubleChance = Mathf.Min(5.0f, groupData.fansYakkai * 0.05f);
+
+        if (Random.Range(0f, 100f) < troubleChance)
+        {
+            int type = Random.Range(0, 3);
+            switch (type)
+            {
+                case 0: // つきまとい
+                    report.AddLog("<color=red>【厄介】一部ファンのつきまとい被害が発生。</color>");
+                    report.AddLog("恐怖でメンバーのメンタル -15");
+                    groupData.mental -= 15;
+                    break;
+                case 1: // イベント妨害
+                    long securityCost = 500000;
+                    financial.currentCash -= securityCost;
+                    financial.dailyCashChange -= securityCost;
+                    report.AddLog($"<color=red>【厄介】イベント妨害予告。警備強化費 -{securityCost:N0}円</color>");
+                    break;
+                case 2: // デマ拡散
+                    int lostLight = (int)(groupData.fansLight * 0.1f);
+                    groupData.fansLight -= lostLight;
+                    report.AddLog($"<color=red>【厄介】根拠のないデマが拡散され、新規ファンが幻滅... ファン-{lostLight}人</color>");
+                    break;
+            }
         }
     }
 
@@ -194,14 +232,16 @@ public class IdolManager : MonoBehaviour
         float memberBonus = 1.0f + (groupData.memberCount * 0.05f);
 
         int fanIncrease = (int)(Random.Range(15, 30) * bonus * memberBonus);
-        groupData.fans += fanIncrease;
+
+        // ★変更: 広告で増えるのは主にライト層
+        groupData.fansLight += fanIncrease;
+
         groupData.mental -= 5;
         groupData.fatigue += 5;
 
         report.AddLog($"[広告] ファン+{fanIncrease}人 / SNS・Web広告費 -{cost:N0}円");
     }
 
-    // ★追加: SNS特化型プロモーション
     public void DoSNSPromotion(DailyReport report)
     {
         if (groupData.discography.Count == 0)
@@ -279,23 +319,34 @@ public class IdolManager : MonoBehaviour
         {
             newFans = Random.Range(500, 1000);
             resultMsg = "<color=magenta>【大バズり】</color> おすすめに掲載！ファン急増！";
+            // ★変更: バズると一定数厄介も混ざる
+            int newYakkai = Random.Range(1, 5);
+            groupData.fansYakkai += newYakkai;
+            groupData.fansLight += (newFans - newYakkai);
         }
         else if (totalScore > 60)
         {
             newFans = Random.Range(50, 150);
             resultMsg = "【好評】 まあまあの再生数。";
+            groupData.fansLight += newFans;
         }
         else
         {
             newFans = Random.Range(5, 20);
             resultMsg = "【不発】 あまり伸びませんでした...";
+            groupData.fansLight += newFans;
         }
 
         // スタッフ(マーケター)の効果も少し乗せる
         float marketerBonus = staffManager.GetStaffBonus(StaffType.Marketer);
-        newFans = (int)(newFans * marketerBonus);
+        // スタッフボーナス分は追加加算
+        int bonusFans = (int)(newFans * (marketerBonus - 1.0f));
+        if (bonusFans > 0)
+        {
+            newFans += bonusFans;
+            groupData.fansLight += bonusFans;
+        }
 
-        groupData.fans += newFans;
         groupData.fatigue += 10; // 動画撮影疲れ
 
         report.AddLog($"[SNS] 『{targetSong.title}』で踊ってみた投稿 (担当:{actor.firstName})");
@@ -321,10 +372,9 @@ public class IdolManager : MonoBehaviour
         report.AddLog($"[休暇] 全員リフレッシュ メンタル回復+{actualRecovery} {managerLog} / ケア費 -{totalCost:N0}円");
     }
 
-    // 特典会ロジック
     public void DoChekiEvent(DailyReport report)
     {
-        int setupCost = 100000;
+        int setupCost = 100000; // 簡易な会場設営や警備費
         if (financial.currentCash < setupCost)
         {
             report.AddLog("<color=red>資金不足で特典会の会場が手配できません。</color>");
@@ -339,33 +389,37 @@ public class IdolManager : MonoBehaviour
         int totalFatigueDamage = 0;
         bool hasSaltResponse = false;
 
+        // メンバーそれぞれの性格に基づく影響を加算
         foreach (var member in groupData.members)
         {
             switch (member.personality)
             {
-                case IdolPersonality.Energetic:
+                case IdolPersonality.Energetic: // 元気：満足度少しUP、メンタル消費普通、疲労普通
                     totalSatisfaction += 1.1f; totalMentalDamage += 10; totalFatigueDamage += 15; break;
-                case IdolPersonality.Serious:
+                case IdolPersonality.Serious:   // 真面目：満足度標準、メンタル消費やや大、疲労少なめ
                     totalSatisfaction += 1.0f; totalMentalDamage += 15; totalFatigueDamage += 10; break;
-                case IdolPersonality.Cool:
+                case IdolPersonality.Cool:      // クール：満足度やや下がるが、メンタルも疲労も削られにくい
                     totalSatisfaction += 0.8f; totalMentalDamage += 5; totalFatigueDamage += 5; break;
-                case IdolPersonality.Lazy:
+                case IdolPersonality.Lazy:      // 怠惰：満足度低い。20%の確率で塩対応による炎上発生
                     totalSatisfaction += 0.7f; totalMentalDamage += 10; totalFatigueDamage += 10;
                     if (Random.Range(0, 100) < 20) hasSaltResponse = true;
                     break;
-                case IdolPersonality.Angel:
+                case IdolPersonality.Angel:     // 天使：満足度大幅UP（神対応）だが、メンタル激減り
                     totalSatisfaction += 1.3f; totalMentalDamage += 25; totalFatigueDamage += 20; break;
             }
         }
 
+        // グループ全体の平均値をとる
         float avgSatisfaction = totalSatisfaction / groupData.memberCount;
         int avgMentalDmg = totalMentalDamage / groupData.memberCount;
         int avgFatigueDmg = totalFatigueDamage / groupData.memberCount;
 
-        float participateRate = Random.Range(0.03f, 0.08f);
-        int participants = (int)(groupData.fans * participateRate);
-        if (participants < 10) participants = 10;
+        // 特典会参加人数は現在のファンの3%?8%程度
+        // ★変更: コア層は参加率が高い
+        int participants = (int)(groupData.fansCore * 0.3f) + (int)(groupData.fansLight * 0.05f) + (int)(groupData.fansYakkai * 0.1f);
+        if (participants < 10) participants = 10; // 最低保証
 
+        // チェキ単価2000円 × 参加者 × 満足度による売上補正
         long sales = (long)(participants * 2000 * avgSatisfaction);
 
         financial.currentCash += sales;
@@ -377,17 +431,34 @@ public class IdolManager : MonoBehaviour
         report.AddLog($"[特典会] チェキ会開催！ {participants}人参加 / 設営費 -{setupCost:N0}円");
         report.AddLog($"<color=yellow>収益 +{sales:N0}円</color> (疲労+{avgFatigueDmg} / メンタル-{avgMentalDmg})");
 
+        // イベント結果の判定
         if (hasSaltResponse)
         {
-            int lostFans = (int)(groupData.fans * 0.05f);
-            groupData.fans -= lostFans;
+            int lostFans = (int)(groupData.fans * 0.05f); // 5%のファン離れ
+            // ★変更: 塩対応で離れるのはコア層（幻滅）とライト層
+            int lostCore = (int)(lostFans * 0.5f);
+            int lostLight = lostFans - lostCore;
+            if (lostCore > groupData.fansCore) lostCore = groupData.fansCore;
+
+            groupData.fansCore -= lostCore;
+            groupData.fansLight -= lostLight;
+
             report.AddLog($"<color=red>【炎上】一部メンバーの「塩対応」がSNSで拡散... ファン-{lostFans}人</color>");
         }
         else if (avgSatisfaction >= 1.15f)
         {
-            int newFans = (int)(participants * 0.2f);
-            groupData.fans += newFans;
+            int newFans = (int)(participants * 0.2f); // 神対応が評判を呼び新規獲得
+            // ★変更: 新規獲得はライト層
+            groupData.fansLight += newFans;
+
+            // ★追加: 既存ライト層がコア層へ昇格
+            int promotedCount = (int)(participants * 0.1f);
+            if (promotedCount > groupData.fansLight) promotedCount = groupData.fansLight;
+            groupData.fansLight -= promotedCount;
+            groupData.fansCore += promotedCount;
+
             report.AddLog($"<color=green>【神対応】手厚い対応が話題になり、新規ファン獲得！ +{newFans}人</color>");
+            report.AddLog($"さらに {promotedCount}人が太客(Core)に昇格しました！");
         }
     }
 
@@ -438,7 +509,9 @@ public class IdolManager : MonoBehaviour
 
         latestSong.hasMV = true;
         int fanBoost = (int)(groupData.fans * 0.1f) + 500;
-        groupData.fans += fanBoost;
+
+        // ★変更: MV効果は主にライト層増加
+        groupData.fansLight += fanBoost;
 
         report.AddLog($"<color=cyan>[MV公開]</color> 『{latestSong.title}』MV完成！ ファン急増 +{fanBoost}人 / 制作費 -{cost:N0}円");
     }
@@ -460,7 +533,18 @@ public class IdolManager : MonoBehaviour
         financial.dailyCashChange -= totalCost;
 
         int lostFans = (int)(groupData.fans * 0.2f);
-        groupData.fans -= lostFans;
+
+        // ★変更: 路線変更はコア層（古参）にダメージが大きい
+        int lostCore = (int)(lostFans * 0.7f);
+        int lostLight = lostFans - lostCore;
+        if (lostCore > groupData.fansCore)
+        {
+            lostCore = groupData.fansCore;
+            lostLight = lostFans - lostCore; // 残りをライトから引く
+        }
+        groupData.fansCore -= lostCore;
+        groupData.fansLight -= lostLight;
+
         groupData.performance = (int)(groupData.performance * 0.9f);
 
         IdolGenre oldGenre = groupData.genre;
@@ -502,12 +586,10 @@ public class IdolManager : MonoBehaviour
         float trendBonus = market.GetMarketMultiplier(groupData.genre);
         int quality = (int)((groupData.performance + budgetBonus) * trendBonus);
 
-        // ★修正: SNS適性を計算
-        // 基本ランダムだが、予算をかけた方が若干バズりやすい曲になりやすい（品質が良いので）
+        // SNS適性を計算
         int baseAppeal = Random.Range(10, 80);
         if (budgetTier == 1) baseAppeal += 20;
 
-        // ジャンルによる特性（KAWAIIは強い、Traditionalは渋いなど）
         if (groupData.genre == IdolGenre.KAWAII) baseAppeal += 10;
         if (groupData.genre == IdolGenre.TRADITIONAL) baseAppeal -= 10;
 
@@ -689,8 +771,15 @@ public class IdolManager : MonoBehaviour
         if (groupData.mental < 40) perfRate *= 0.8f;
 
         float trendBonus = market.GetMarketMultiplier(groupData.genre);
-        int baseAudience = (int)(groupData.fans * perfRate * trendBonus);
-        int actualAudience = Mathf.Min(baseAudience, booking.venue.capacity);
+
+        // ★変更: 属性別集客計算
+        // Coreは来やすく(80%)、Lightは少し来にくい(30%)
+        int audienceCore = (int)(groupData.fansCore * 0.8f * perfRate * trendBonus);
+        int audienceLight = (int)(groupData.fansLight * 0.3f * perfRate * trendBonus);
+        int audienceYakkai = (int)(groupData.fansYakkai * 0.5f);
+
+        int totalDemand = audienceCore + audienceLight + audienceYakkai;
+        int actualAudience = Mathf.Min(totalDemand, booking.venue.capacity);
 
         int ticketPrice = 3000 + (booking.venue.capacity / 10);
         long ticketSales = (long)actualAudience * ticketPrice;
@@ -698,8 +787,9 @@ public class IdolManager : MonoBehaviour
         long goodsSales = 0;
         if (groupData.goodsStock > 0)
         {
-            int buyers = (int)(actualAudience * 0.3f);
-            int soldCount = Mathf.Min(buyers, groupData.goodsStock);
+            // ★変更: 物販はCore層の比率が高いほど伸びる
+            int potentialBuyers = (int)(audienceCore * 0.8f) + (int)(audienceLight * 0.1f);
+            int soldCount = Mathf.Min(potentialBuyers, groupData.goodsStock);
             groupData.goodsStock -= soldCount;
             goodsSales = soldCount * 2000;
             report.AddLog($"[物販] グッズ売上 +{goodsSales:N0}円 ({soldCount}個販売)");
@@ -718,9 +808,19 @@ public class IdolManager : MonoBehaviour
         if (actualAudience >= booking.venue.capacity * 0.8f)
         {
             int newFans = (int)(actualAudience * 0.1f);
-            groupData.fans += newFans;
+
+            // ★変更: ライブ成功で獲得するのはCoreファン
+            groupData.fansCore += newFans;
+
+            // ★追加: さらにライト層がコア層に昇格
+            int promoted = (int)(audienceLight * 0.2f);
+            if (promoted > groupData.fansLight) promoted = groupData.fansLight;
+            groupData.fansLight -= promoted;
+            groupData.fansCore += promoted;
+
             groupData.mental += 10;
             report.AddLog($"[成果] 大成功！ファン+{newFans}人");
+            report.AddLog($"さらに {promoted}人がCoreファンに定着しました！");
         }
         else
         {
