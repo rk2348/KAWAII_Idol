@@ -12,6 +12,11 @@ public class IdolManager : MonoBehaviour
     private StaffManager staffManager;
     private GameManager gameManager;
 
+    // ★追加：クリエイターリスト
+    private List<Creator> composers = new List<Creator>();
+    private List<Creator> choreographers = new List<Creator>();
+    private List<Creator> designers = new List<Creator>();
+
     private readonly string[] lastNames = { "佐藤", "鈴木", "高橋", "田中", "渡辺", "伊藤", "山本", "中村", "小林", "加藤", "星野", "天海", "如月", "渋谷", "本田" };
     private readonly string[] firstNames = { "愛", "未来", "さくら", "美咲", "花音", "七海", "遥", "彩花", "結衣", "莉子", "美月", "凛", "陽菜", "美優", "桃子" };
 
@@ -24,6 +29,32 @@ public class IdolManager : MonoBehaviour
         groupData = new IdolGroup();
         groupData.members.Clear();
         activeBookings.Clear();
+
+        // ★追加：クリエイターデータの初期化
+        InitCreators();
+    }
+
+    // ★追加：クリエイター定義
+    void InitCreators()
+    {
+        composers.Add(new Creator("新人ボカロP", CreatorType.Composer, 500000, 20, 30));
+        composers.Add(new Creator("有名作曲家H", CreatorType.Composer, 2000000, 60, 10)); // クオリティ高いがSNSは普通
+
+        choreographers.Add(new Creator("近所のダンサー", CreatorType.Choreographer, 200000, 10, 10));
+        choreographers.Add(new Creator("カリスマ振付師M", CreatorType.Choreographer, 1000000, 40, 50)); // SNSバズり特化
+
+        designers.Add(new Creator("既製服リメイク", CreatorType.CostumeDesigner, 50000, 5, 5));
+        designers.Add(new Creator("有名ブランド特注", CreatorType.CostumeDesigner, 200000, 30, 20));
+    }
+
+    // ★追加：予算ランクに応じたクリエイター取得（UI簡略化のため）
+    Creator GetCreator(List<Creator> list, int tier)
+    {
+        if (tier >= list.Count)
+        {
+            return list.Last();
+        }
+        return list[tier];
     }
 
     public void SetGroupName(string name)
@@ -129,11 +160,12 @@ public class IdolManager : MonoBehaviour
             financial.dailyCashChange -= searchCost;
             groupData.mental = 30;
 
-            // ★変更: 失踪時に離れるのは主にライト層
+            // 失踪時はライト層が真っ先に離れる
             int lostFans = (int)(groupData.fansLight * 0.3f);
             groupData.fansLight -= lostFans;
 
             report.AddLog($"<color=red>【失踪】メンバー音信不通。捜索費 -{searchCost:N0}円</color>");
+            report.AddLog($"不信感により新規ファン離脱: -{lostFans}人");
             return;
         }
 
@@ -149,7 +181,7 @@ public class IdolManager : MonoBehaviour
             report.AddLog($"<color=grey>[捜索中] 発見まであと {groupData.runawayDaysLeft + 1}日...</color>");
         }
 
-        // ★追加: 厄介ファントラブルのチェック
+        // 厄介ファントラブルのチェック
         CheckYakkaiTrouble(report);
     }
 
@@ -233,13 +265,13 @@ public class IdolManager : MonoBehaviour
 
         int fanIncrease = (int)(Random.Range(15, 30) * bonus * memberBonus);
 
-        // ★変更: 広告で増えるのは主にライト層
+        // 広告で増えるのは主にライト層
         groupData.fansLight += fanIncrease;
 
         groupData.mental -= 5;
         groupData.fatigue += 5;
 
-        report.AddLog($"[広告] ファン+{fanIncrease}人 / SNS・Web広告費 -{cost:N0}円");
+        report.AddLog($"[広告] 新規ファン(Light)+{fanIncrease}人 / 広告費 -{cost:N0}円");
     }
 
     public void DoSNSPromotion(DailyReport report)
@@ -319,38 +351,32 @@ public class IdolManager : MonoBehaviour
         {
             newFans = Random.Range(500, 1000);
             resultMsg = "<color=magenta>【大バズり】</color> おすすめに掲載！ファン急増！";
-            // ★変更: バズると一定数厄介も混ざる
+            // バズると一定数厄介も混ざる
             int newYakkai = Random.Range(1, 5);
             groupData.fansYakkai += newYakkai;
-            groupData.fansLight += (newFans - newYakkai);
+            resultMsg += $" (厄介+{newYakkai}発生)";
         }
         else if (totalScore > 60)
         {
             newFans = Random.Range(50, 150);
             resultMsg = "【好評】 まあまあの再生数。";
-            groupData.fansLight += newFans;
         }
         else
         {
             newFans = Random.Range(5, 20);
             resultMsg = "【不発】 あまり伸びませんでした...";
-            groupData.fansLight += newFans;
         }
 
         // スタッフ(マーケター)の効果も少し乗せる
         float marketerBonus = staffManager.GetStaffBonus(StaffType.Marketer);
-        // スタッフボーナス分は追加加算
-        int bonusFans = (int)(newFans * (marketerBonus - 1.0f));
-        if (bonusFans > 0)
-        {
-            newFans += bonusFans;
-            groupData.fansLight += bonusFans;
-        }
+        newFans = (int)(newFans * marketerBonus);
 
+        // 基本的にSNSで増えるのはライト層
+        groupData.fansLight += newFans;
         groupData.fatigue += 10; // 動画撮影疲れ
 
         report.AddLog($"[SNS] 『{targetSong.title}』で踊ってみた投稿 (担当:{actor.firstName})");
-        report.AddLog($"{resultMsg} ファン+{newFans}人 {personalityLog}{trendLog}");
+        report.AddLog($"{resultMsg} 新規+{newFans}人 {personalityLog}{trendLog}");
     }
 
     public void DoRest(DailyReport report)
@@ -369,7 +395,7 @@ public class IdolManager : MonoBehaviour
         groupData.mental = Mathf.Min(100, groupData.mental + actualRecovery);
 
         string managerLog = managerBonus > 1.0f ? $"<color=green>(Mg効果+{actualRecovery - baseRecovery})</color>" : "";
-        report.AddLog($"[休暇] 全員リフレッシュ メンタル回復+{actualRecovery} {managerLog} / ケア費 -{totalCost:N0}円");
+        report.AddLog($"[休暇] 全員リフレッシュ ({actualRecovery}回復) {managerLog} / ケア費 -{totalCost:N0}円");
     }
 
     public void DoChekiEvent(DailyReport report)
@@ -395,17 +421,34 @@ public class IdolManager : MonoBehaviour
             switch (member.personality)
             {
                 case IdolPersonality.Energetic: // 元気：満足度少しUP、メンタル消費普通、疲労普通
-                    totalSatisfaction += 1.1f; totalMentalDamage += 10; totalFatigueDamage += 15; break;
+                    totalSatisfaction += 1.1f;
+                    totalMentalDamage += 10;
+                    totalFatigueDamage += 15;
+                    break;
                 case IdolPersonality.Serious:   // 真面目：満足度標準、メンタル消費やや大、疲労少なめ
-                    totalSatisfaction += 1.0f; totalMentalDamage += 15; totalFatigueDamage += 10; break;
+                    totalSatisfaction += 1.0f;
+                    totalMentalDamage += 15;
+                    totalFatigueDamage += 10;
+                    break;
                 case IdolPersonality.Cool:      // クール：満足度やや下がるが、メンタルも疲労も削られにくい
-                    totalSatisfaction += 0.8f; totalMentalDamage += 5; totalFatigueDamage += 5; break;
+                    totalSatisfaction += 0.8f;
+                    totalMentalDamage += 5;
+                    totalFatigueDamage += 5;
+                    break;
                 case IdolPersonality.Lazy:      // 怠惰：満足度低い。20%の確率で塩対応による炎上発生
-                    totalSatisfaction += 0.7f; totalMentalDamage += 10; totalFatigueDamage += 10;
-                    if (Random.Range(0, 100) < 20) hasSaltResponse = true;
+                    totalSatisfaction += 0.7f;
+                    totalMentalDamage += 10;
+                    totalFatigueDamage += 10;
+                    if (Random.Range(0, 100) < 20)
+                    {
+                        hasSaltResponse = true;
+                    }
                     break;
                 case IdolPersonality.Angel:     // 天使：満足度大幅UP（神対応）だが、メンタル激減り
-                    totalSatisfaction += 1.3f; totalMentalDamage += 25; totalFatigueDamage += 20; break;
+                    totalSatisfaction += 1.3f;
+                    totalMentalDamage += 25;
+                    totalFatigueDamage += 20;
+                    break;
             }
         }
 
@@ -414,8 +457,7 @@ public class IdolManager : MonoBehaviour
         int avgMentalDmg = totalMentalDamage / groupData.memberCount;
         int avgFatigueDmg = totalFatigueDamage / groupData.memberCount;
 
-        // 特典会参加人数は現在のファンの3%?8%程度
-        // ★変更: コア層は参加率が高い
+        // 特典会参加人数はコア層が中心
         int participants = (int)(groupData.fansCore * 0.3f) + (int)(groupData.fansLight * 0.05f) + (int)(groupData.fansYakkai * 0.1f);
         if (participants < 10) participants = 10; // 最低保証
 
@@ -428,14 +470,13 @@ public class IdolManager : MonoBehaviour
         groupData.mental -= avgMentalDmg;
         groupData.fatigue += avgFatigueDmg;
 
-        report.AddLog($"[特典会] チェキ会開催！ {participants}人参加 / 設営費 -{setupCost:N0}円");
-        report.AddLog($"<color=yellow>収益 +{sales:N0}円</color> (疲労+{avgFatigueDmg} / メンタル-{avgMentalDmg})");
+        report.AddLog($"[特典会] {participants}人参加 (売上+{sales:N0}円)");
 
         // イベント結果の判定
         if (hasSaltResponse)
         {
             int lostFans = (int)(groupData.fans * 0.05f); // 5%のファン離れ
-            // ★変更: 塩対応で離れるのはコア層（幻滅）とライト層
+            // 塩対応で離れるのはコア層（幻滅）とライト層
             int lostCore = (int)(lostFans * 0.5f);
             int lostLight = lostFans - lostCore;
             if (lostCore > groupData.fansCore) lostCore = groupData.fansCore;
@@ -443,17 +484,21 @@ public class IdolManager : MonoBehaviour
             groupData.fansCore -= lostCore;
             groupData.fansLight -= lostLight;
 
-            report.AddLog($"<color=red>【炎上】一部メンバーの「塩対応」がSNSで拡散... ファン-{lostFans}人</color>");
+            // 残りの一部が厄介化する
+            int toYakkai = (int)(lostCore * 0.2f);
+            groupData.fansYakkai += toYakkai;
+
+            report.AddLog($"<color=red>【塩対応】コアファンが幻滅... (離脱{lostCore}人 / 厄介化{toYakkai}人)</color>");
         }
         else if (avgSatisfaction >= 1.15f)
         {
             int newFans = (int)(participants * 0.2f); // 神対応が評判を呼び新規獲得
-            // ★変更: 新規獲得はライト層
             groupData.fansLight += newFans;
 
-            // ★追加: 既存ライト層がコア層へ昇格
+            // 既存ライト層がコア層へ昇格
             int promotedCount = (int)(participants * 0.1f);
             if (promotedCount > groupData.fansLight) promotedCount = groupData.fansLight;
+
             groupData.fansLight -= promotedCount;
             groupData.fansCore += promotedCount;
 
@@ -510,10 +555,10 @@ public class IdolManager : MonoBehaviour
         latestSong.hasMV = true;
         int fanBoost = (int)(groupData.fans * 0.1f) + 500;
 
-        // ★変更: MV効果は主にライト層増加
+        // MV効果は主にライト層増加
         groupData.fansLight += fanBoost;
 
-        report.AddLog($"<color=cyan>[MV公開]</color> 『{latestSong.title}』MV完成！ ファン急増 +{fanBoost}人 / 制作費 -{cost:N0}円");
+        report.AddLog($"<color=cyan>[MV公開]</color> 『{latestSong.title}』MV完成！ ファン急増(Light) +{fanBoost}人 / 制作費 -{cost:N0}円");
     }
 
     public void ChangeConcept(IdolGenre newGenre, DailyReport report)
@@ -534,14 +579,15 @@ public class IdolManager : MonoBehaviour
 
         int lostFans = (int)(groupData.fans * 0.2f);
 
-        // ★変更: 路線変更はコア層（古参）にダメージが大きい
+        // 路線変更はコア層（古参）にダメージが大きい
         int lostCore = (int)(lostFans * 0.7f);
         int lostLight = lostFans - lostCore;
         if (lostCore > groupData.fansCore)
         {
             lostCore = groupData.fansCore;
-            lostLight = lostFans - lostCore; // 残りをライトから引く
+            lostLight = lostFans - lostCore;
         }
+
         groupData.fansCore -= lostCore;
         groupData.fansLight -= lostLight;
 
@@ -551,25 +597,20 @@ public class IdolManager : MonoBehaviour
         groupData.genre = newGenre;
 
         report.AddLog($"<color=yellow>[路線変更]</color> {oldGenre} -> {newGenre} / 新衣装費({groupData.memberCount}人分) -{totalCost:N0}円");
+        report.AddLog($"ファン離脱 (Core:-{lostCore} / Light:-{lostLight})");
     }
 
+    // ★変更：ProduceSongにクリエイター選択ロジックを統合
     public void ProduceSong(int budgetTier, DailyReport report, string songTitle)
     {
-        long songCost, costumeUnitCost, choreoCost;
+        // クリエイターを予算Tierに応じて選択
+        Creator composer = GetCreator(composers, budgetTier);
+        Creator choreographer = GetCreator(choreographers, budgetTier);
+        Creator designer = GetCreator(designers, budgetTier);
 
-        if (budgetTier == 0)
-        {
-            songCost = 500000;
-            costumeUnitCost = 50000;
-            choreoCost = 200000;
-        }
-        else
-        {
-            songCost = 2000000;
-            costumeUnitCost = 200000;
-            choreoCost = 1000000;
-        }
-
+        long songCost = composer.cost;
+        long costumeUnitCost = designer.cost;
+        long choreoCost = choreographer.cost;
         long totalCostumeCost = costumeUnitCost * groupData.memberCount;
         long totalCost = songCost + totalCostumeCost + choreoCost;
 
@@ -582,17 +623,15 @@ public class IdolManager : MonoBehaviour
         financial.currentCash -= totalCost;
         financial.dailyCashChange -= totalCost;
 
-        int budgetBonus = budgetTier == 0 ? Random.Range(10, 30) : Random.Range(40, 80);
+        // 品質計算：クリエイターの能力値を反映
+        int budgetBonus = composer.qualityBonus + choreographer.qualityBonus + designer.qualityBonus;
         float trendBonus = market.GetMarketMultiplier(groupData.genre);
         int quality = (int)((groupData.performance + budgetBonus) * trendBonus);
 
-        // SNS適性を計算
-        int baseAppeal = Random.Range(10, 80);
-        if (budgetTier == 1) baseAppeal += 20;
-
+        // SNS適性計算：クリエイターのSNS適性を反映
+        int baseAppeal = composer.snsBonus + choreographer.snsBonus + designer.snsBonus + Random.Range(10, 30);
         if (groupData.genre == IdolGenre.KAWAII) baseAppeal += 10;
         if (groupData.genre == IdolGenre.TRADITIONAL) baseAppeal -= 10;
-
         int finalSnsAppeal = Mathf.Clamp(baseAppeal, 1, 100);
 
         Song newSong = new Song();
@@ -603,11 +642,14 @@ public class IdolManager : MonoBehaviour
         newSong.totalSales = 0;
         newSong.peakRank = 100;
         newSong.hasMV = false;
-        newSong.snsAppeal = finalSnsAppeal; // セット
+        newSong.snsAppeal = finalSnsAppeal;
 
         groupData.discography.Add(newSong);
+
+        // 3時点のログを維持し、指名クリエイター情報を追加
         report.AddLog($"<color=green>[新曲リリース]</color> 『{newSong.title}』(Q:{quality} / <color=magenta>SNS適性:{finalSnsAppeal}</color>)");
         report.AddLog($"[内訳] 楽曲:-{songCost:N0} 衣装({groupData.memberCount}人):-{totalCostumeCost:N0} 振付:-{choreoCost:N0}");
+        report.AddLog($"[指名] 作:{composer.name} / 振:{choreographer.name} / 衣:{designer.name}");
     }
 
     public void ProcessWeeklySales(DailyReport report)
@@ -750,8 +792,7 @@ public class IdolManager : MonoBehaviour
         float totalSetlistPower = 0;
         int songCount = 0;
 
-        if (booking.setlist.Count == 0) totalSetlistPower = groupData.performance * 0.1f;
-        else
+        if (booking.setlist.Count > 0)
         {
             foreach (var song in booking.setlist)
             {
@@ -762,17 +803,18 @@ public class IdolManager : MonoBehaviour
                 totalSetlistPower += songScore;
             }
         }
+        else
+        {
+            totalSetlistPower = groupData.performance * 0.1f;
+        }
 
-        float basePerf = groupData.performance;
-        if (songCount > 0) basePerf += (totalSetlistPower / 5.0f);
-        float perfRate = basePerf / 20.0f;
-
+        float perfRate = (groupData.performance + (totalSetlistPower / 5.0f)) / 20.0f;
         if (groupData.fatigue > 70) perfRate *= 0.6f;
         if (groupData.mental < 40) perfRate *= 0.8f;
 
         float trendBonus = market.GetMarketMultiplier(groupData.genre);
 
-        // ★変更: 属性別集客計算
+        // 属性別集客計算
         // Coreは来やすく(80%)、Lightは少し来にくい(30%)
         int audienceCore = (int)(groupData.fansCore * 0.8f * perfRate * trendBonus);
         int audienceLight = (int)(groupData.fansLight * 0.3f * perfRate * trendBonus);
@@ -787,12 +829,12 @@ public class IdolManager : MonoBehaviour
         long goodsSales = 0;
         if (groupData.goodsStock > 0)
         {
-            // ★変更: 物販はCore層の比率が高いほど伸びる
+            // 物販はCore層の比率が高いほど伸びる
             int potentialBuyers = (int)(audienceCore * 0.8f) + (int)(audienceLight * 0.1f);
             int soldCount = Mathf.Min(potentialBuyers, groupData.goodsStock);
             groupData.goodsStock -= soldCount;
             goodsSales = soldCount * 2000;
-            report.AddLog($"[物販] グッズ売上 +{goodsSales:N0}円 ({soldCount}個販売)");
+            report.AddLog($"[物販] {soldCount}個販売 (+{goodsSales:N0}円) Core率高めで売上増！");
         }
         else
         {
@@ -800,32 +842,29 @@ public class IdolManager : MonoBehaviour
         }
 
         long totalRevenue = ticketSales + goodsSales;
-        financial.RegisterTransaction($"ライブ収益({booking.venue.venueName})", totalRevenue, gameManager.currentDay, 60);
+        financial.RegisterTransaction($"ライブ収益", totalRevenue, gameManager.currentDay, 60);
 
-        report.AddLog($"[動員] {actualAudience}人 / キャパ{booking.venue.capacity}");
-        report.AddLog($"[売上予定] +{totalRevenue:N0}円 (60日後)");
+        report.AddLog($"[動員] {actualAudience}人 (Core:{audienceCore} Light:{audienceLight})");
 
         if (actualAudience >= booking.venue.capacity * 0.8f)
         {
+            // ライブ成功で獲得するのはCoreファン
             int newFans = (int)(actualAudience * 0.1f);
-
-            // ★変更: ライブ成功で獲得するのはCoreファン
             groupData.fansCore += newFans;
 
-            // ★追加: さらにライト層がコア層に昇格
+            // さらにライト層がコア層に昇格
             int promoted = (int)(audienceLight * 0.2f);
             if (promoted > groupData.fansLight) promoted = groupData.fansLight;
             groupData.fansLight -= promoted;
             groupData.fansCore += promoted;
 
             groupData.mental += 10;
-            report.AddLog($"[成果] 大成功！ファン+{newFans}人");
-            report.AddLog($"さらに {promoted}人がCoreファンに定着しました！");
+            report.AddLog($"<color=green>[大成功]</color> {promoted}人がCoreファンに定着！");
         }
         else
         {
             groupData.mental -= 20;
-            report.AddLog($"[成果] 空席多数...メンバー消沈。");
+            report.AddLog("[失敗] 空席目立つ...");
         }
 
         groupData.fatigue += 20 + (songCount * 5);

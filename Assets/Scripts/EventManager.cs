@@ -16,7 +16,7 @@ public class EventManager : MonoBehaviour
         int dice = Random.Range(0, 100);
 
         if (dice < 3) TriggerBadEvent(report);
-        else if (dice >= 98) TriggerGoodEvent(report); // 2%
+        else if (dice >= 98) TriggerGoodEvent(report);
     }
 
     void TriggerBadEvent(DailyReport report)
@@ -25,13 +25,15 @@ public class EventManager : MonoBehaviour
         switch (type)
         {
             case 0:
-                // ★変更: 炎上時はライト層が大幅に減り、コア層は少し耐える
                 report.AddLog("<color=red>【炎上】</color> SNSで失言！ファン減少...");
-                int lostLight = (int)(idolManager.groupData.fansLight * 0.2f); // 20%
-                int lostCore = (int)(idolManager.groupData.fansCore * 0.05f);  // 5%
+                int lostLight = (int)(idolManager.groupData.fansLight * 0.2f);
+                int lostCore = (int)(idolManager.groupData.fansCore * 0.05f);
+
                 idolManager.groupData.fansLight -= lostLight;
                 idolManager.groupData.fansCore -= lostCore;
                 idolManager.groupData.mental -= 20;
+
+                report.AddLog($"ファン離脱 (Light:-{lostLight} / Core:-{lostCore})");
                 break;
             case 1:
                 report.AddLog("<color=red>【破損】</color> 衣装トラブルで緊急出費！");
@@ -47,14 +49,14 @@ public class EventManager : MonoBehaviour
 
     void TriggerGoodEvent(DailyReport report)
     {
-        // ★変更: バズりはライト層急増＋厄介発生
         report.AddLog("<color=yellow>【バズり】</color> 動画が大ヒット！ファン急増！");
         int newLight = (int)(idolManager.groupData.fans * 0.3f);
         int newYakkai = Random.Range(1, 10);
 
         idolManager.groupData.fansLight += newLight;
         idolManager.groupData.fansYakkai += newYakkai;
-
         idolManager.groupData.mental += 10;
+
+        report.AddLog($"新規ファン+{newLight}人 (うち厄介+{newYakkai}人)");
     }
 }
