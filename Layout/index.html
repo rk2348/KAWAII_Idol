@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Idol Manager Main UI Mockup v3 - Tab Version</title>
+<style>
+    :root {
+        --primary-bg: #fdf5f8;
+        --panel-bg: #ffffff;
+        --accent-pink: #ff69b4;
+        --accent-blue: #5dade2;
+        --accent-yellow: #f4d03f;
+        --accent-purple: #9b59b6;
+        --text-dark: #2c3e50;
+        --text-gray: #7f8c8d;
+        --danger: #e74c3c;
+        --success: #2ecc71;
+        --tab-inactive: #f0f2f5;
+        --tab-border: #e0e0e0;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+        background-color: #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    #game-screen {
+        width: 1280px;
+        height: 720px;
+        background-color: var(--primary-bg);
+        position: relative;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        display: grid;
+        grid-template-rows: 60px 1fr 170px; /* フッター高さを少し調整 */
+        grid-template-columns: 280px 1fr 280px;
+        overflow: hidden;
+    }
+
+    /* --- ヘッダー --- */
+    .header-bar {
+        grid-column: 1 / 4;
+        background: linear-gradient(90deg, #ff9a9e 0%, #fecfef 100%);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+    .date-badge {
+        background: #fff;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        color: var(--accent-pink);
+        font-size: 1.2rem;
+    }
+    .resource-group {
+        display: flex;
+        gap: 20px;
+    }
+    .resource-item {
+        background: rgba(255,255,255,0.9);
+        padding: 5px 15px;
+        border-radius: 8px;
+        font-weight: bold;
+        color: var(--text-dark);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* --- 左パネル --- */
+    .left-panel {
+        grid-row: 2 / 3;
+        grid-column: 1 / 2;
+        background-color: var(--panel-bg);
+        padding: 15px;
+        border-right: 1px solid #eee;
+        overflow-y: auto;
+    }
+    .panel-title {
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: var(--text-dark);
+        border-bottom: 2px solid var(--accent-pink);
+        padding-bottom: 5px;
+        margin-bottom: 10px;
+        margin-top: 15px;
+    }
+    .panel-title:first-child { margin-top: 0; }
+    
+    .status-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+        font-size: 0.85rem;
+    }
+    .bar-bg {
+        width: 100%;
+        height: 8px;
+        background: #eee;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+    .bar-fill { height: 100%; border-radius: 4px; }
+    .fill-mental { background: var(--success); width: 80%; }
+    .fill-fatigue { background: var(--danger); width: 30%; }
+    .fill-perf { background: var(--accent-blue); width: 65%; }
+
+    .member-card {
+        display: flex;
+        align-items: center;
+        background: #f9f9f9;
+        border-radius: 6px;
+        padding: 6px;
+        margin-bottom: 6px;
+        border-left: 3px solid var(--accent-pink);
+    }
+    .member-icon {
+        width: 32px;
+        height: 32px;
+        background: #ddd;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    .member-info { flex: 1; }
+    .member-name { font-size: 0.85rem; font-weight: bold; }
+    .member-meta { font-size: 0.7rem; color: var(--text-gray); }
+
+    /* --- メインビュー --- */
+    .main-view {
+        grid-row: 2 / 3;
+        grid-column: 2 / 3;
+        background: url('https://placehold.co/800x600/fdf5f8/ffb6c1?text=3D+Office+View') no-repeat center center;
+        background-size: cover;
+        position: relative;
+    }
+    .notification-bubble {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px 20px;
+        border-radius: 30px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100% {transform:translate(-50%,0);} 50% {transform:translate(-50%,-5px);} }
+
+    /* --- 右パネル --- */
+    .right-panel {
+        grid-row: 2 / 3;
+        grid-column: 3 / 4;
+        background-color: var(--panel-bg);
+        padding: 15px;
+        border-left: 1px solid #eee;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .info-card {
+        background: #f4f6f7;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #e5e8e8;
+    }
+    .info-label { font-size: 0.75rem; color: var(--text-gray); margin-bottom: 2px; }
+    .info-value { font-size: 1.1rem; font-weight: bold; color: var(--text-dark); }
+    .highlight { color: var(--accent-pink); }
+    
+    .log-container {
+        flex: 1;
+        background: #fff;
+        border: 1px solid #eee;
+        padding: 8px;
+        overflow-y: auto;
+        font-size: 0.75rem;
+        line-height: 1.4;
+    }
+    .log-entry { margin-bottom: 4px; border-bottom: 1px dashed #f0f0f0; padding-bottom: 2px; }
+    .log-red { color: var(--danger); }
+
+    /* --- フッター (コマンド - タブ式) --- */
+    .command-area {
+        grid-row: 3 / 4;
+        grid-column: 1 / 4;
+        background: #fff;
+        border-top: 1px solid #ddd;
+        /* padding削除: レイアウト変更のため */
+        display: flex; 
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    }
+
+    /* 左側のNEXTボタンエリア */
+    .next-day-container {
+        width: 140px;
+        background: #fdfdfd;
+        border-right: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .next-day-btn {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f1c40f, #d35400);
+        border: 4px solid #fff;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        transition: transform 0.2s;
+    }
+    .next-day-btn:active { transform: scale(0.95); }
+    .next-day-sub { font-size: 0.6rem; font-weight: normal; margin-top: 2px; }
+
+    /* 右側のコマンドタブエリア */
+    .command-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* タブメニュー */
+    .tab-menu {
+        height: 40px;
+        background: var(--tab-inactive);
+        display: flex;
+        border-bottom: 1px solid var(--tab-border);
+    }
+    
+    .tab-btn {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: var(--text-gray);
+        cursor: pointer;
+        transition: all 0.2s;
+        border-right: 1px solid #e0e0e0;
+        position: relative;
+    }
+    .tab-btn:hover { background: rgba(0,0,0,0.03); color: var(--text-dark); }
+    
+    /* アクティブなタブのデザイン */
+    .tab-btn.active {
+        background: #fff;
+        color: var(--text-dark);
+        border-bottom: 3px solid transparent; /* 下線を色付けするための準備 */
+    }
+    .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px; /* ボーダーの上にかぶせる */
+        left: 0;
+        width: 100%;
+        height: 3px;
+    }
+
+    /* 各タブの固有色 */
+    .tab-work.active { color: var(--accent-blue); }
+    .tab-work.active::after { background: var(--accent-blue); }
+
+    .tab-live.active { color: var(--accent-purple); }
+    .tab-live.active::after { background: var(--accent-purple); }
+
+    .tab-prod.active { color: var(--accent-pink); }
+    .tab-prod.active::after { background: var(--accent-pink); }
+
+    .tab-mgmt.active { color: #555; }
+    .tab-mgmt.active::after { background: #555; }
+
+
+    /* コンテンツエリア */
+    .tab-content-area {
+        flex: 1;
+        padding: 15px 20px;
+        background: #fff;
+        overflow-x: auto;
+        display: flex;
+        align-items: center;
+    }
+
+    /* コマンドグループ（初期状態は非表示） */
+    .cmd-group {
+        display: none; /* JSで切り替え */
+        gap: 15px;
+        width: 100%;
+        animation: fadeIn 0.3s ease;
+    }
+    .cmd-group.active {
+        display: flex;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* コマンドボタン本体 */
+    .cmd-btn {
+        width: 90px;
+        height: 90px;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 5px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .cmd-btn:hover {
+        background: #fdf5f8;
+        border-color: var(--accent-pink);
+        transform: translateY(-3px);
+        box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    }
+
+    .cmd-icon { font-size: 1.8rem; margin-bottom: 6px; }
+    .cmd-label { font-size: 0.8rem; font-weight: bold; color: var(--text-dark); line-height: 1.2; }
+    .cmd-cost { font-size: 0.7rem; color: var(--text-gray); margin-top: 3px; }
+
+    /* カテゴリ別の装飾線 */
+    .border-work { border-bottom: 3px solid var(--accent-blue); }
+    .border-live { border-bottom: 3px solid var(--accent-purple); }
+    .border-prod { border-bottom: 3px solid var(--accent-pink); }
+    .border-mgmt { border-bottom: 3px solid var(--text-gray); }
+
+</style>
+</head>
+<body>
+
+    <div id="game-screen">
+        <div class="header-bar">
+            <div class="date-badge">Day <span id="day-val">24</span></div>
+            <div class="resource-group">
+                <div class="resource-item">
+                    <span>💎 資金:</span>
+                    <span>¥ 12,000,000</span>
+                </div>
+                <div class="resource-item">
+                    <span>❤️ ファン:</span>
+                    <span>15,200人</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="left-panel">
+            <div class="panel-title">GROUP STATUS</div>
+            <div class="status-box">
+                <div class="status-row"><span>Mental</span> <span>75/100</span></div>
+                <div class="bar-bg"><div class="bar-fill fill-mental" style="width:75%"></div></div>
+                
+                <div class="status-row"><span>Fatigue</span> <span>45/100</span></div>
+                <div class="bar-bg"><div class="bar-fill fill-fatigue" style="width:45%"></div></div>
+                
+                <div class="status-row"><span>Performance</span> <span>Lv.18</span></div>
+                <div class="bar-bg"><div class="bar-fill fill-perf" style="width:55%"></div></div>
+            </div>
+
+            <div class="panel-title">MEMBERS (5)</div>
+            <div class="member-card">
+                <div class="member-icon"></div>
+                <div class="member-info">
+                    <div class="member-name">佐藤 愛</div>
+                    <div class="member-meta">17歳 / 元気 / Vo.12</div>
+                </div>
+            </div>
+            <div class="member-card">
+                <div class="member-icon" style="background:#ddd;"></div>
+                <div class="member-info">
+                    <div class="member-name">田中 未来</div>
+                    <div class="member-meta">19歳 / クール / Da.18</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-view">
+            <div class="notification-bubble">
+                <span style="font-size:1.5rem">💡</span>
+                <div>
+                    <div style="font-weight:bold; font-size:0.9rem;">方針確認</div>
+                    <div style="font-size:0.8rem; color:#666;">来月のライブに向けてセットリストを決めましょう</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="panel-title">INFORMATION</div>
+            <div class="info-card">
+                <div class="info-label">CURRENT TREND</div>
+                <div class="info-value highlight">KAWAII 🎀</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">NEXT LIVE</div>
+                <div class="info-value" style="font-size:1rem;">ライブハウス</div>
+                <div style="font-size:0.8rem; color:#e74c3c; font-weight:bold;">あと 5 日</div>
+            </div>
+
+            <div class="panel-title">LOGS</div>
+            <div class="log-container">
+                <div class="log-entry">[予約] ライブハウスを予約しました</div>
+                <div class="log-entry log-red">[出費] スタッフ給与 -600,000円</div>
+                <div class="log-entry">[制作] 新曲『Shooting Star』完成</div>
+                <div class="log-entry">[市場] トレンド変化なし</div>
+            </div>
+        </div>
+
+        <div class="command-area">
+            
+            <div class="next-day-container">
+                <div class="next-day-btn">
+                    NEXT
+                    <span class="next-day-sub">翌日へ</span>
+                </div>
+            </div>
+
+            <div class="command-main">
+                
+                <div class="tab-menu">
+                    <button class="tab-btn tab-work active" onclick="switchTab('work')">Daily Work</button>
+                    <button class="tab-btn tab-live" onclick="switchTab('live')">Live / Event</button>
+                    <button class="tab-btn tab-prod" onclick="switchTab('prod')">Production</button>
+                    <button class="tab-btn tab-mgmt" onclick="switchTab('mgmt')">Strategy</button>
+                </div>
+
+                <div class="tab-content-area">
+                    
+                    <div id="group-work" class="cmd-group active">
+                        <button class="cmd-btn border-work">
+                            <div class="cmd-icon">🎤</div>
+                            <div class="cmd-label">レッスン</div>
+                            <div class="cmd-cost">¥50k</div>
+                        </button>
+                        <button class="cmd-btn border-work">
+                            <div class="cmd-icon">💪</div>
+                            <div class="cmd-label">自主練</div>
+                            <div class="cmd-cost">Sta.消費</div>
+                        </button>
+                        <button class="cmd-btn border-work">
+                            <div class="cmd-icon">☕</div>
+                            <div class="cmd-label">休暇</div>
+                            <div class="cmd-cost">¥25k</div>
+                        </button>
+                        <button class="cmd-btn border-work">
+                            <div class="cmd-icon">🤝</div>
+                            <div class="cmd-label">握手会</div>
+                            <div class="cmd-cost">小規模</div>
+                        </button>
+                    </div>
+
+                    <div id="group-live" class="cmd-group">
+                        <button class="cmd-btn border-live">
+                            <div class="cmd-icon">🏟️</div>
+                            <div class="cmd-label">会場予約</div>
+                            <div class="cmd-cost">手付金</div>
+                        </button>
+                        <button class="cmd-btn border-live" style="background-color:#fcf3cf;">
+                            <div class="cmd-icon">📝</div>
+                            <div class="cmd-label">セトリ変更</div> 
+                            <div class="cmd-cost">編成</div>
+                        </button>
+                        <button class="cmd-btn border-live">
+                            <div class="cmd-icon">📸</div>
+                            <div class="cmd-label">特典会</div>
+                            <div class="cmd-cost">収益化</div>
+                        </button>
+                        <button class="cmd-btn border-live">
+                            <div class="cmd-icon">🚌</div>
+                            <div class="cmd-label">遠征</div>
+                            <div class="cmd-cost">¥300k~</div>
+                        </button>
+                    </div>
+
+                    <div id="group-prod" class="cmd-group">
+                        <button class="cmd-btn border-prod">
+                            <div class="cmd-icon">💿</div>
+                            <div class="cmd-label">新曲制作</div>
+                            <div class="cmd-cost">¥1M~</div>
+                        </button>
+                        <button class="cmd-btn border-prod" style="background-color:#e8daef;">
+                            <div class="cmd-icon">🎬</div>
+                            <div class="cmd-label">MV作成</div> 
+                            <div class="cmd-cost">¥3.5M~</div>
+                        </button>
+                        <button class="cmd-btn border-prod">
+                            <div class="cmd-icon">👕</div>
+                            <div class="cmd-label">グッズ</div>
+                            <div class="cmd-cost">¥500k</div>
+                        </button>
+                        <button class="cmd-btn border-prod">
+                            <div class="cmd-icon">👗</div>
+                            <div class="cmd-label">衣装発注</div>
+                            <div class="cmd-cost">¥800k</div>
+                        </button>
+                    </div>
+
+                    <div id="group-mgmt" class="cmd-group">
+                        <button class="cmd-btn border-mgmt">
+                            <div class="cmd-icon">📢</div>
+                            <div class="cmd-label">広告/SNS</div>
+                            <div class="cmd-cost">宣伝</div>
+                        </button>
+                        <button class="cmd-btn border-mgmt">
+                            <div class="cmd-icon">👔</div>
+                            <div class="cmd-label">スタッフ</div>
+                            <div class="cmd-cost">雇用</div>
+                        </button>
+                        <button class="cmd-btn border-mgmt" style="background-color:#fadbd8;">
+                            <div class="cmd-icon">🔄</div>
+                            <div class="cmd-label">路線変更</div> 
+                            <div class="cmd-cost">¥1.5M~</div>
+                        </button>
+                        <button class="cmd-btn border-mgmt">
+                            <div class="cmd-icon">🏦</div>
+                            <div class="cmd-label">融資</div>
+                            <div class="cmd-cost">銀行</div>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // タブ切り替えロジック
+        function switchTab(category) {
+            // 1. すべてのタブボタンから active クラスを外す
+            const tabs = document.querySelectorAll('.tab-btn');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // 2. すべてのコンテンツグループから active クラスを外す
+            const groups = document.querySelectorAll('.cmd-group');
+            groups.forEach(group => group.classList.remove('active'));
+
+            // 3. 選択されたタブボタンに active クラスをつける
+            // (クラス名に .tab-{category} が含まれている要素を探す)
+            const activeTab = document.querySelector(`.tab-${category}`);
+            if (activeTab) activeTab.classList.add('active');
+
+            // 4. 選択されたコンテンツを表示する
+            const activeGroup = document.getElementById(`group-${category}`);
+            if (activeGroup) activeGroup.classList.add('active');
+        }
+    </script>
+</body>
+</html>

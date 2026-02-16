@@ -126,9 +126,9 @@ public class UIManager : MonoBehaviour
         if (gameManager == null) return;
 
         dateText.text = $"Day: {gameManager.currentDay}";
-        cashText.text = $"Cash: ?{gameManager.financial.currentCash:N0}";
+        cashText.text = $"‘‹à: ‡Œv{gameManager.financial.currentCash:N0}";
         cashText.color = gameManager.financial.currentCash < 0 ? Color.red : Color.white;
-        debtText.text = $"Debt: ?{gameManager.financial.currentDebt:N0}";
+        debtText.text = $"Ø‹à: ‡Œv{gameManager.financial.currentDebt:N0}";
 
         var g = gameManager.idol.groupData;
         var m = gameManager.market;
