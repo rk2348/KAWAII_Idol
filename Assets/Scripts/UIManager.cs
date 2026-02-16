@@ -8,7 +8,7 @@ public class UIManager : MonoBehaviour
     [Header("Panels")]
     public GameObject startPanel;
     public SetupPanel setupPanel;
-    public AuditionPanel auditionPanel; // ★追加：Inspectorで割り当ててください
+    public AuditionPanel auditionPanel;
     public GameObject mainPanel;
     public GameObject resultPanel;
     public GameObject gameOverPanel;
@@ -24,7 +24,7 @@ public class UIManager : MonoBehaviour
     public Text dateText;
     public Text cashText;
     public Text debtText;
-    public Text statusText;
+    public Text statusText; // メンバー詳細を表示
     public Text ledgerText;
     public Text trendText;
     public Text bookingText;
@@ -46,14 +46,14 @@ public class UIManager : MonoBehaviour
 
         if (songNamePanel != null) songNamePanel.Setup(gm);
         if (setupPanel != null) setupPanel.Setup(gm);
-        if (auditionPanel != null) auditionPanel.Setup(gm, gm.idol); // ★追加
+        if (auditionPanel != null) auditionPanel.Setup(gm, gm.idol);
     }
 
     public void ShowStartScreen()
     {
         startPanel.SetActive(true);
         if (setupPanel != null) setupPanel.gameObject.SetActive(false);
-        if (auditionPanel != null) auditionPanel.gameObject.SetActive(false); // ★追加
+        if (auditionPanel != null) auditionPanel.gameObject.SetActive(false);
         mainPanel.SetActive(false);
         resultPanel.SetActive(false);
         gameOverPanel.SetActive(false);
@@ -66,7 +66,6 @@ public class UIManager : MonoBehaviour
         setupPanel.Open();
     }
 
-    // ★追加
     public void ShowAuditionScreen(int memberCount)
     {
         setupPanel.gameObject.SetActive(false);
@@ -133,7 +132,22 @@ public class UIManager : MonoBehaviour
         var g = gameManager.idol.groupData;
         var m = gameManager.market;
 
-        statusText.text = $"{g.groupName} ({g.memberCount}人)\nFans: {g.fans:N0}\nGenre: {g.genre}";
+        // ★変更点：メンバーの詳細ステータス（名前、年齢、性格、各能力値）を表示
+        StringBuilder statusSb = new StringBuilder();
+        statusSb.AppendLine($"{g.groupName} ({g.memberCount}人)");
+        statusSb.AppendLine($"Fans: {g.fans:N0} / Genre: {g.genre}");
+        statusSb.AppendLine("----------------");
+
+        foreach (var mem in g.members)
+        {
+            // 名前 (年齢/性格)
+            statusSb.AppendLine($"{mem.GetFullName()} <size=12>({mem.age}歳/{mem.GetPersonalityName()})</size>");
+            // Vo, Da, Vi の値を表示
+            statusSb.AppendLine($" <color=grey>Vo:{mem.vocal} Da:{mem.dance} Vi:{mem.visual}</color>");
+        }
+
+        statusText.text = statusSb.ToString();
+
         trendText.text = $"Trend: {m.currentTrend} {(m.isIceAge ? "<color=cyan>(ICE AGE)</color>" : "")}";
 
         if (mentalSlider != null) mentalSlider.value = g.mental / 100f;
